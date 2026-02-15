@@ -29,13 +29,13 @@ function update_script() {
   fi
   if check_for_gh_release "ebusd" "john30/ebusd"; then
     msg_info "Stopping Services"
-    systemctl stop ebusd.service
+    systemctl stop ebusd
     msg_ok "Stopped Services"
 
     fetch_and_deploy_gh_release "ebusd" "john30/ebusd" "binary" "latest" "/opt/ebusd" "ebusd-*_amd64-trixie_mqtt1.deb"
 
     msg_info "Starting Services"
-    systemctl start ebusd.service
+    systemctl start ebusd
     msg_ok "Started Services"
     msg_ok "Updated successfully!"
   fi
