@@ -5,7 +5,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://docs.seerr.dev/
 
-APP="Jellyseerr"
+APP="Seerr"
 var_tags="${var_tags:-media}"
 var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-4096}"
