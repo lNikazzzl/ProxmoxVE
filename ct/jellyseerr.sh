@@ -29,9 +29,7 @@ function update_script() {
     exit
   fi
 
-  if [[ -f "/opt/jellyseerr/package.json" ]]; then
-  CURRENT_VERSION=$(grep '"version"' /opt/jellyseerr/package.json | head -n1 | awk -F'"' '{print $4}')
-  if [[ "$CURRENT_VERSION" == "2.7.3" ]]; then
+  if [[ -f "/opt/jellyseerr/package.json" ]] && [[ "$(grep -m1 '"version"' /opt/jellyseerr/package.json | awk -F'"' '{print $4}')" == "2.7.3" ]]; then
     echo
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Jellyseerr v2.7.3 detected."
