@@ -15,7 +15,7 @@ update_os
 
 msg_info "Installing ebusd"
 fetch_and_deploy_gh_release "ebusd" "john30/ebusd" "binary" "latest" "" "ebusd-*_amd64-trixie_mqtt1.deb"
-systemctl enable -q ebusd.service
+systemctl enable -q ebusd
 msg_ok "Installed ebusd"
 
 motd_ssh
