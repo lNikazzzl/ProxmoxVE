@@ -27,118 +27,113 @@
 # ------------------------------------------------------------------------------
 # explain_exit_code()
 #
-# - Maps numeric exit codes to human-readable error descriptions
-# - Supports:
-#   * Generic/Shell errors (1, 2, 124, 126-130, 134, 137, 139, 141, 143)
-#   * curl/wget errors (6, 7, 22, 28, 35)
-#   * Package manager errors (APT, DPKG: 100-102, 255)
-#   * Systemd/Service errors (150-154)
-#   * Python/pip/uv errors (160-162)
-#   * PostgreSQL errors (170-173)
-#   * MySQL/MariaDB errors (180-183)
-#   * MongoDB errors (190-193)
-#   * Proxmox custom codes (200-231)
-#   * Node.js/npm errors (243-249)
-# - Returns description string for given exit code
-# - Shared function with api.func for consistency
+# - Canonical version is defined in api.func (sourced before this file)
+# - This section only provides a fallback if api.func was not loaded
+# - See api.func SECTION 1 for the authoritative exit code mappings
 # ------------------------------------------------------------------------------
-explain_exit_code() {
-  local code="$1"
-  case "$code" in
-  # --- Generic / Shell ---
-  1) echo "General error / Operation not permitted" ;;
-  2) echo "Misuse of shell builtins (e.g. syntax error)" ;;
-  6) echo "curl: DNS resolution failed (could not resolve host)" ;;
-  7) echo "curl: Failed to connect (network unreachable / host down)" ;;
-  22) echo "curl: HTTP error returned (404, 429, 500+)" ;;
-  28) echo "curl: Operation timeout (network slow or server not responding)" ;;
-  35) echo "curl: SSL/TLS handshake failed (certificate error)" ;;
-  100) echo "APT: Package manager error (broken packages / dependency problems)" ;;
-  101) echo "APT: Configuration error (bad sources.list, malformed config)" ;;
-  102) echo "APT: Lock held by another process (dpkg/apt still running)" ;;
-  124) echo "Command timed out (timeout command)" ;;
-  126) echo "Command invoked cannot execute (permission problem?)" ;;
-  127) echo "Command not found" ;;
-  128) echo "Invalid argument to exit" ;;
-  130) echo "Terminated by Ctrl+C (SIGINT)" ;;
-  134) echo "Process aborted (SIGABRT - possibly Node.js heap overflow)" ;;
-  137) echo "Killed (SIGKILL / Out of memory?)" ;;
-  139) echo "Segmentation fault (core dumped)" ;;
-  141) echo "Broken pipe (SIGPIPE - output closed prematurely)" ;;
-  143) echo "Terminated (SIGTERM)" ;;
-
-  # --- Systemd / Service errors (150-154) ---
-  150) echo "Systemd: Service failed to start" ;;
-  151) echo "Systemd: Service unit not found" ;;
-  152) echo "Permission denied (EACCES)" ;;
-  153) echo "Build/compile failed (make/gcc/cmake)" ;;
-  154) echo "Node.js: Native addon build failed (node-gyp)" ;;
-
-  # --- Node.js / npm / pnpm / yarn (243-249) ---
-  243) echo "Node.js: Out of memory (JavaScript heap out of memory)" ;;
-  245) echo "Node.js: Invalid command-line option" ;;
-  246) echo "Node.js: Internal JavaScript Parse Error" ;;
-  247) echo "Node.js: Fatal internal error" ;;
-  248) echo "Node.js: Invalid C++ addon / N-API failure" ;;
-  249) echo "npm/pnpm/yarn: Unknown fatal error" ;;
-
-  # --- Python / pip / uv (160-162) ---
-  160) echo "Python: Virtualenv / uv environment missing or broken" ;;
-  161) echo "Python: Dependency resolution failed" ;;
-  162) echo "Python: Installation aborted (permissions or EXTERNALLY-MANAGED)" ;;
-
-  # --- PostgreSQL (170-174) ---
-  170) echo "PostgreSQL: Connection failed (server not running / wrong socket)" ;;
-  171) echo "PostgreSQL: Authentication failed (bad user/password)" ;;
-  172) echo "PostgreSQL: Database does not exist" ;;
-  173) echo "PostgreSQL: Fatal error in query / syntax" ;;
-
-  # --- MySQL / MariaDB (180-183) ---
-  180) echo "MySQL/MariaDB: Connection failed (server not running / wrong socket)" ;;
-  181) echo "MySQL/MariaDB: Authentication failed (bad user/password)" ;;
-  182) echo "MySQL/MariaDB: Database does not exist" ;;
-  183) echo "MySQL/MariaDB: Fatal error in query / syntax" ;;
-
-  # --- MongoDB (190-193) ---
-  190) echo "MongoDB: Connection failed (server not running)" ;;
-  191) echo "MongoDB: Authentication failed (bad user/password)" ;;
-  192) echo "MongoDB: Database not found" ;;
-  193) echo "MongoDB: Fatal query error" ;;
-
-  # --- Proxmox Custom Codes (200-231) ---
-  200) echo "Proxmox: Failed to create lock file" ;;
-  203) echo "Proxmox: Missing CTID variable" ;;
-  204) echo "Proxmox: Missing PCT_OSTYPE variable" ;;
-  205) echo "Proxmox: Invalid CTID (<100)" ;;
-  206) echo "Proxmox: CTID already in use" ;;
-  207) echo "Proxmox: Password contains unescaped special characters" ;;
-  208) echo "Proxmox: Invalid configuration (DNS/MAC/Network format)" ;;
-  209) echo "Proxmox: Container creation failed" ;;
-  210) echo "Proxmox: Cluster not quorate" ;;
-  211) echo "Proxmox: Timeout waiting for template lock" ;;
-  212) echo "Proxmox: Storage type 'iscsidirect' does not support containers (VMs only)" ;;
-  213) echo "Proxmox: Storage type does not support 'rootdir' content" ;;
-  214) echo "Proxmox: Not enough storage space" ;;
-  215) echo "Proxmox: Container created but not listed (ghost state)" ;;
-  216) echo "Proxmox: RootFS entry missing in config" ;;
-  217) echo "Proxmox: Storage not accessible" ;;
-  218) echo "Proxmox: Template file corrupted or incomplete" ;;
-  219) echo "Proxmox: CephFS does not support containers - use RBD" ;;
-  220) echo "Proxmox: Unable to resolve template path" ;;
-  221) echo "Proxmox: Template file not readable" ;;
-  222) echo "Proxmox: Template download failed" ;;
-  223) echo "Proxmox: Template not available after download" ;;
-  224) echo "Proxmox: PBS storage is for backups only" ;;
-  225) echo "Proxmox: No template available for OS/Version" ;;
-  231) echo "Proxmox: LXC stack upgrade failed" ;;
-
-  # --- DPKG ---
-  255) echo "DPKG: Fatal internal error" ;;
-
-  # --- Default ---
-  *) echo "Unknown error" ;;
-  esac
-}
+if ! declare -f explain_exit_code &>/dev/null; then
+  explain_exit_code() {
+    local code="$1"
+    case "$code" in
+    1) echo "General error / Operation not permitted" ;;
+    2) echo "Misuse of shell builtins (e.g. syntax error)" ;;
+    10) echo "Docker / privileged mode required (unsupported environment)" ;;
+    4) echo "curl: Feature not supported or protocol error" ;;
+    5) echo "curl: Could not resolve proxy" ;;
+    6) echo "curl: DNS resolution failed (could not resolve host)" ;;
+    7) echo "curl: Failed to connect (network unreachable / host down)" ;;
+    8) echo "curl: FTP server reply error" ;;
+    22) echo "curl: HTTP error returned (404, 429, 500+)" ;;
+    23) echo "curl: Write error (disk full or permissions)" ;;
+    25) echo "curl: Upload failed" ;;
+    28) echo "curl: Operation timeout (network slow or server not responding)" ;;
+    30) echo "curl: FTP port command failed" ;;
+    35) echo "curl: SSL/TLS handshake failed (certificate error)" ;;
+    56) echo "curl: Receive error (connection reset by peer)" ;;
+    75) echo "Temporary failure (retry later)" ;;
+    78) echo "curl: Remote file not found (404 on FTP/file)" ;;
+    64) echo "Usage error (wrong arguments)" ;;
+    65) echo "Data format error (bad input data)" ;;
+    66) echo "Input file not found (cannot open input)" ;;
+    67) echo "User not found (addressee unknown)" ;;
+    68) echo "Host not found (hostname unknown)" ;;
+    69) echo "Service unavailable" ;;
+    70) echo "Internal software error" ;;
+    71) echo "System error (OS-level failure)" ;;
+    72) echo "Critical OS file missing" ;;
+    73) echo "Cannot create output file" ;;
+    74) echo "I/O error" ;;
+    76) echo "Remote protocol error" ;;
+    77) echo "Permission denied" ;;
+    100) echo "APT: Package manager error (broken packages / dependency problems)" ;;
+    101) echo "APT: Configuration error (bad sources.list, malformed config)" ;;
+    102) echo "APT: Lock held by another process (dpkg/apt still running)" ;;
+    124) echo "Command timed out (timeout command)" ;;
+    126) echo "Command invoked cannot execute (permission problem?)" ;;
+    127) echo "Command not found" ;;
+    128) echo "Invalid argument to exit" ;;
+    130) echo "Terminated by Ctrl+C (SIGINT)" ;;
+    134) echo "Process aborted (SIGABRT - possibly Node.js heap overflow)" ;;
+    137) echo "Killed (SIGKILL / Out of memory?)" ;;
+    139) echo "Segmentation fault (core dumped)" ;;
+    141) echo "Broken pipe (SIGPIPE - output closed prematurely)" ;;
+    143) echo "Terminated (SIGTERM)" ;;
+    150) echo "Systemd: Service failed to start" ;;
+    151) echo "Systemd: Service unit not found" ;;
+    152) echo "Permission denied (EACCES)" ;;
+    153) echo "Build/compile failed (make/gcc/cmake)" ;;
+    154) echo "Node.js: Native addon build failed (node-gyp)" ;;
+    160) echo "Python: Virtualenv / uv environment missing or broken" ;;
+    161) echo "Python: Dependency resolution failed" ;;
+    162) echo "Python: Installation aborted (permissions or EXTERNALLY-MANAGED)" ;;
+    170) echo "PostgreSQL: Connection failed (server not running / wrong socket)" ;;
+    171) echo "PostgreSQL: Authentication failed (bad user/password)" ;;
+    172) echo "PostgreSQL: Database does not exist" ;;
+    173) echo "PostgreSQL: Fatal error in query / syntax" ;;
+    180) echo "MySQL/MariaDB: Connection failed (server not running / wrong socket)" ;;
+    181) echo "MySQL/MariaDB: Authentication failed (bad user/password)" ;;
+    182) echo "MySQL/MariaDB: Database does not exist" ;;
+    183) echo "MySQL/MariaDB: Fatal error in query / syntax" ;;
+    190) echo "MongoDB: Connection failed (server not running)" ;;
+    191) echo "MongoDB: Authentication failed (bad user/password)" ;;
+    192) echo "MongoDB: Database not found" ;;
+    193) echo "MongoDB: Fatal query error" ;;
+    200) echo "Proxmox: Failed to create lock file" ;;
+    203) echo "Proxmox: Missing CTID variable" ;;
+    204) echo "Proxmox: Missing PCT_OSTYPE variable" ;;
+    205) echo "Proxmox: Invalid CTID (<100)" ;;
+    206) echo "Proxmox: CTID already in use" ;;
+    207) echo "Proxmox: Password contains unescaped special characters" ;;
+    208) echo "Proxmox: Invalid configuration (DNS/MAC/Network format)" ;;
+    209) echo "Proxmox: Container creation failed" ;;
+    210) echo "Proxmox: Cluster not quorate" ;;
+    211) echo "Proxmox: Timeout waiting for template lock" ;;
+    212) echo "Proxmox: Storage type 'iscsidirect' does not support containers (VMs only)" ;;
+    213) echo "Proxmox: Storage type does not support 'rootdir' content" ;;
+    214) echo "Proxmox: Not enough storage space" ;;
+    215) echo "Proxmox: Container created but not listed (ghost state)" ;;
+    216) echo "Proxmox: RootFS entry missing in config" ;;
+    217) echo "Proxmox: Storage not accessible" ;;
+    218) echo "Proxmox: Template file corrupted or incomplete" ;;
+    219) echo "Proxmox: CephFS does not support containers - use RBD" ;;
+    220) echo "Proxmox: Unable to resolve template path" ;;
+    221) echo "Proxmox: Template file not readable" ;;
+    222) echo "Proxmox: Template download failed" ;;
+    223) echo "Proxmox: Template not available after download" ;;
+    224) echo "Proxmox: PBS storage is for backups only" ;;
+    225) echo "Proxmox: No template available for OS/Version" ;;
+    231) echo "Proxmox: LXC stack upgrade failed" ;;
+    243) echo "Node.js: Out of memory (JavaScript heap out of memory)" ;;
+    245) echo "Node.js: Invalid command-line option" ;;
+    246) echo "Node.js: Internal JavaScript Parse Error" ;;
+    247) echo "Node.js: Fatal internal error" ;;
+    248) echo "Node.js: Invalid C++ addon / N-API failure" ;;
+    249) echo "npm/pnpm/yarn: Unknown fatal error" ;;
+    255) echo "DPKG: Fatal internal error" ;;
+    *) echo "Unknown error" ;;
+    esac
+  }
+fi
 
 # ==============================================================================
 # SECTION 2: ERROR HANDLERS
@@ -203,9 +198,9 @@ error_handler() {
   fi
 
   if [[ -n "$active_log" && -s "$active_log" ]]; then
-    echo "--- Last 20 lines of silent log ---"
+    echo -e "\n${TAB}--- Last 20 lines of log ---"
     tail -n 20 "$active_log"
-    echo "-----------------------------------"
+    echo -e "${TAB}-----------------------------------\n"
 
     # Detect context: Container (INSTALL_LOG set + /root exists) vs Host (BUILD_LOG)
     if [[ -n "${INSTALL_LOG:-}" && -d /root ]]; then
@@ -215,12 +210,7 @@ error_handler() {
 
       # Create error flag file with exit code for host detection
       echo "$exit_code" >"/root/.install-${SESSION_ID:-error}.failed" 2>/dev/null || true
-
-      if declare -f msg_custom >/dev/null 2>&1; then
-        msg_custom "📋" "${YW}" "Log saved to: ${container_log}"
-      else
-        echo -e "${YW}Log saved to:${CL} ${BL}${container_log}${CL}"
-      fi
+      # Log path is shown by host as combined log - no need to show container path
     else
       # HOST CONTEXT: Show local log path and offer container cleanup
       if declare -f msg_custom >/dev/null 2>&1; then
@@ -231,24 +221,62 @@ error_handler() {
 
       # Offer to remove container if it exists (build errors after container creation)
       if [[ -n "${CTID:-}" ]] && command -v pct &>/dev/null && pct status "$CTID" &>/dev/null; then
+        # Report failure to API before container cleanup
+        if declare -f post_update_to_api &>/dev/null; then
+          post_update_to_api "failed" "$exit_code"
+        fi
+
         echo ""
-        echo -en "${YW}Remove broken container ${CTID}? (Y/n) [auto-remove in 60s]: ${CL}"
+        if declare -f msg_custom >/dev/null 2>&1; then
+          echo -en "${TAB}❓${TAB}${YW}Remove broken container ${CTID}? (Y/n) [auto-remove in 60s]: ${CL}"
+        else
+          echo -en "${YW}Remove broken container ${CTID}? (Y/n) [auto-remove in 60s]: ${CL}"
+        fi
 
         if read -t 60 -r response; then
           if [[ -z "$response" || "$response" =~ ^[Yy]$ ]]; then
-            echo -e "\n${YW}Removing container ${CTID}${CL}"
+            echo ""
+            if declare -f msg_info >/dev/null 2>&1; then
+              msg_info "Removing container ${CTID}"
+            else
+              echo -e "${YW}Removing container ${CTID}${CL}"
+            fi
             pct stop "$CTID" &>/dev/null || true
             pct destroy "$CTID" &>/dev/null || true
-            echo -e "${GN}✔${CL} Container ${CTID} removed"
+            if declare -f msg_ok >/dev/null 2>&1; then
+              msg_ok "Container ${CTID} removed"
+            else
+              echo -e "${GN}✔${CL} Container ${CTID} removed"
+            fi
           elif [[ "$response" =~ ^[Nn]$ ]]; then
-            echo -e "\n${YW}Container ${CTID} kept for debugging${CL}"
+            echo ""
+            if declare -f msg_warn >/dev/null 2>&1; then
+              msg_warn "Container ${CTID} kept for debugging"
+            else
+              echo -e "${YW}Container ${CTID} kept for debugging${CL}"
+            fi
           fi
         else
           # Timeout - auto-remove
-          echo -e "\n${YW}No response - auto-removing container${CL}"
+          echo ""
+          if declare -f msg_info >/dev/null 2>&1; then
+            msg_info "No response - removing container ${CTID}"
+          else
+            echo -e "${YW}No response - removing container ${CTID}${CL}"
+          fi
           pct stop "$CTID" &>/dev/null || true
           pct destroy "$CTID" &>/dev/null || true
-          echo -e "${GN}✔${CL} Container ${CTID} removed"
+          if declare -f msg_ok >/dev/null 2>&1; then
+            msg_ok "Container ${CTID} removed"
+          else
+            echo -e "${GN}✔${CL} Container ${CTID} removed"
+          fi
+        fi
+
+        # Force one final status update attempt after cleanup
+        # This ensures status is updated even if the first attempt failed (e.g., HTTP 400)
+        if declare -f post_update_to_api &>/dev/null; then
+          post_update_to_api "failed" "$exit_code" "force"
         fi
       fi
     fi
@@ -271,6 +299,22 @@ error_handler() {
 # ------------------------------------------------------------------------------
 on_exit() {
   local exit_code=$?
+  # Report orphaned "installing" records to telemetry API
+  # Catches ALL exit paths: errors (non-zero), signals, AND clean exits where
+  # post_to_api was called ("installing" sent) but post_update_to_api was never called
+  if [[ "${POST_TO_API_DONE:-}" == "true" && "${POST_UPDATE_DONE:-}" != "true" ]]; then
+    if declare -f post_update_to_api >/dev/null 2>&1; then
+      # Ensure log is accessible on host before reporting
+      if declare -f ensure_log_on_host >/dev/null 2>&1; then
+        ensure_log_on_host
+      fi
+      if [[ $exit_code -ne 0 ]]; then
+        post_update_to_api "failed" "$exit_code"
+      else
+        post_update_to_api "failed" "1"
+      fi
+    fi
+  fi
   [[ -n "${lockfile:-}" && -e "$lockfile" ]] && rm -f "$lockfile"
   exit "$exit_code"
 }
@@ -283,6 +327,14 @@ on_exit() {
 # - Exits with code 130 (128 + SIGINT=2)
 # ------------------------------------------------------------------------------
 on_interrupt() {
+  # Ensure log is accessible on host before reporting
+  if declare -f ensure_log_on_host >/dev/null 2>&1; then
+    ensure_log_on_host
+  fi
+  # Report interruption to telemetry API (prevents stuck "installing" records)
+  if declare -f post_update_to_api >/dev/null 2>&1; then
+    post_update_to_api "failed" "130"
+  fi
   if declare -f msg_error >/dev/null 2>&1; then
     msg_error "Interrupted by user (SIGINT)"
   else
@@ -300,6 +352,14 @@ on_interrupt() {
 # - Triggered by external process termination
 # ------------------------------------------------------------------------------
 on_terminate() {
+  # Ensure log is accessible on host before reporting
+  if declare -f ensure_log_on_host >/dev/null 2>&1; then
+    ensure_log_on_host
+  fi
+  # Report termination to telemetry API (prevents stuck "installing" records)
+  if declare -f post_update_to_api >/dev/null 2>&1; then
+    post_update_to_api "failed" "143"
+  fi
   if declare -f msg_error >/dev/null 2>&1; then
     msg_error "Terminated by signal (SIGTERM)"
   else

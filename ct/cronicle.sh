@@ -23,10 +23,9 @@ function update_script() {
   header_info
   check_container_storage
   check_container_resources
-  UPD=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "SUPPORT" --radiolist --cancel-button Exit-Script "Spacebar = Select" 11 58 2 \
-    "1" "Update ${APP}" ON \
-    "2" "Install ${APP} Worker" OFF \
-    3>&1 1>&2 2>&3)
+  UPD=$(msg_menu "Cronicle Update Options" \
+    "1" "Update ${APP}" \
+    "2" "Install ${APP} Worker")
 
   if [ "$UPD" == "1" ]; then
     if [[ ! -d /opt/cronicle ]]; then
@@ -44,10 +43,7 @@ function update_script() {
     NODE_VERSION="22" setup_nodejs
     if check_for_gh_release "cronicle" "jhuckaby/Cronicle"; then
       msg_info "Installing Dependencies"
-      $STD apt install -y \
-        git \
-        build-essential \
-        ca-certificates
+      ensure_dependencies git build-essential ca-certificates
       msg_ok "Installed Dependencies"
 
       NODE_VERSION="22" setup_nodejs

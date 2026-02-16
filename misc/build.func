@@ -38,15 +38,16 @@
 # - Captures app-declared resource defaults (CPU, RAM, Disk)
 # ------------------------------------------------------------------------------
 variables() {
-  NSAPP=$(echo "${APP,,}" | tr -d ' ')              # This function sets the NSAPP variable by converting the value of the APP variable to lowercase and removing any spaces.
-  var_install="${NSAPP}-install"                    # sets the var_install variable by appending "-install" to the value of NSAPP.
-  INTEGER='^[0-9]+([.][0-9]+)?$'                    # it defines the INTEGER regular expression pattern.
-  PVEHOST_NAME=$(hostname)                          # gets the Proxmox Hostname and sets it to Uppercase
-  DIAGNOSTICS="yes"                                 # sets the DIAGNOSTICS variable to "yes", used for the API call.
-  METHOD="default"                                  # sets the METHOD variable to "default", used for the API call.
-  RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)" # generates a random UUID and sets it to the RANDOM_UUID variable.
-  SESSION_ID="${RANDOM_UUID:0:8}"                   # Short session ID (first 8 chars of UUID) for log files
-  BUILD_LOG="/tmp/create-lxc-${SESSION_ID}.log"     # Host-side container creation log
+  NSAPP=$(echo "${APP,,}" | tr -d ' ')                   # This function sets the NSAPP variable by converting the value of the APP variable to lowercase and removing any spaces.
+  var_install="${NSAPP}-install"                         # sets the var_install variable by appending "-install" to the value of NSAPP.
+  INTEGER='^[0-9]+([.][0-9]+)?$'                         # it defines the INTEGER regular expression pattern.
+  PVEHOST_NAME=$(hostname)                               # gets the Proxmox Hostname and sets it to Uppercase
+  DIAGNOSTICS="yes"                                      # sets the DIAGNOSTICS variable to "yes", used for the API call.
+  METHOD="default"                                       # sets the METHOD variable to "default", used for the API call.
+  RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)"      # generates a random UUID and sets it to the RANDOM_UUID variable.
+  SESSION_ID="${RANDOM_UUID:0:8}"                        # Short session ID (first 8 chars of UUID) for log files
+  BUILD_LOG="/tmp/create-lxc-${SESSION_ID}.log"          # Host-side container creation log
+  combined_log="/tmp/install-${SESSION_ID}-combined.log" # Combined log (build + install) for failed installations
   CTTYPE="${CTTYPE:-${CT_TYPE:-1}}"
 
   # Parse dev_mode early
@@ -195,9 +196,11 @@ get_current_ip() {
 #
 # - Updates /etc/motd with current container IP
 # - Removes old IP entries to avoid duplicates
+# - Regenerates /etc/profile.d/00_lxc-details.sh with dynamic OS/IP info
 # ------------------------------------------------------------------------------
 update_motd_ip() {
   MOTD_FILE="/etc/motd"
+  PROFILE_FILE="/etc/profile.d/00_lxc-details.sh"
 
   if [ -f "$MOTD_FILE" ]; then
     # Remove existing IP Address lines to prevent duplication
@@ -206,6 +209,26 @@ update_motd_ip() {
     IP=$(get_current_ip)
     # Add the new IP address
     echo -e "${TAB}${NETWORK}${YW} IP Address: ${GN}${IP}${CL}" >>"$MOTD_FILE"
+  fi
+
+  # Update dynamic LXC details profile if values changed (e.g., after OS upgrade)
+  # Only update if file exists and is from community-scripts
+  if [ -f "$PROFILE_FILE" ] && grep -q "community-scripts" "$PROFILE_FILE" 2>/dev/null; then
+    # Get current values
+    local current_os="$(grep ^NAME /etc/os-release | cut -d= -f2 | tr -d '"') - Version: $(grep ^VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"')"
+    local current_hostname="$(hostname)"
+    local current_ip="$(hostname -I | awk '{print $1}')"
+
+    # Update only if values actually changed
+    if ! grep -q "OS:.*$current_os" "$PROFILE_FILE" 2>/dev/null; then
+      sed -i "s|OS:.*|OS: \${GN}$current_os\${CL}\\\"|" "$PROFILE_FILE"
+    fi
+    if ! grep -q "Hostname:.*$current_hostname" "$PROFILE_FILE" 2>/dev/null; then
+      sed -i "s|Hostname:.*|Hostname: \${GN}$current_hostname\${CL}\\\"|" "$PROFILE_FILE"
+    fi
+    if ! grep -q "IP Address:.*$current_ip" "$PROFILE_FILE" 2>/dev/null; then
+      sed -i "s|IP Address:.*|IP Address: \${GN}$current_ip\${CL}\\\"|" "$PROFILE_FILE"
+    fi
   fi
 }
 
@@ -254,8 +277,9 @@ install_ssh_keys_into_ct() {
 # ------------------------------------------------------------------------------
 # validate_container_id()
 #
-# - Validates if a container ID is available for use
-# - Checks if ID is already used by VM or LXC container
+# - Validates if a container ID is available for use (CLUSTER-WIDE)
+# - Checks cluster resources via pvesh for VMs/CTs on ALL nodes
+# - Falls back to local config file check if pvesh unavailable
 # - Checks if ID is used in LVM logical volumes
 # - Returns 0 if ID is available, 1 if already in use
 # ------------------------------------------------------------------------------
@@ -267,9 +291,33 @@ validate_container_id() {
     return 1
   fi
 
-  # Check if config file exists for VM or LXC
+  # CLUSTER-WIDE CHECK: Query all VMs/CTs across all nodes
+  # This catches IDs used on other nodes in the cluster
+  # NOTE: Works on single-node too - Proxmox always has internal cluster structure
+  # Falls back gracefully if pvesh unavailable or returns empty
+  if command -v pvesh &>/dev/null; then
+    local cluster_ids
+    cluster_ids=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null | 
+      grep -oP '"vmid":\s*\K[0-9]+' 2>/dev/null || true)
+    if [[ -n "$cluster_ids" ]] && echo "$cluster_ids" | grep -qw "$ctid"; then
+      return 1
+    fi
+  fi
+
+  # LOCAL FALLBACK: Check if config file exists for VM or LXC
+  # This handles edge cases where pvesh might not return all info
   if [[ -f "/etc/pve/qemu-server/${ctid}.conf" ]] || [[ -f "/etc/pve/lxc/${ctid}.conf" ]]; then
     return 1
+  fi
+
+  # Check ALL nodes in cluster for config files (handles pmxcfs sync delays)
+  # NOTE: On single-node, /etc/pve/nodes/ contains just the one node - still works
+  if [[ -d "/etc/pve/nodes" ]]; then
+    for node_dir in /etc/pve/nodes/*/; do
+      if [[ -f "${node_dir}qemu-server/${ctid}.conf" ]] || [[ -f "${node_dir}lxc/${ctid}.conf" ]]; then
+        return 1
+      fi
+    done
   fi
 
   # Check if ID is used in LVM logical volumes
@@ -283,63 +331,30 @@ validate_container_id() {
 # ------------------------------------------------------------------------------
 # get_valid_container_id()
 #
-# - Returns a valid, unused container ID
+# - Returns a valid, unused container ID (CLUSTER-AWARE)
+# - Uses pvesh /cluster/nextid as starting point (already cluster-aware)
 # - If provided ID is valid, returns it
-# - Otherwise increments from suggested ID until a free one is found
+# - Otherwise increments until a free one is found across entire cluster
 # - Calls validate_container_id() to check availability
 # ------------------------------------------------------------------------------
 get_valid_container_id() {
-  local suggested_id="${1:-$(pvesh get /cluster/nextid)}"
+  local suggested_id="${1:-$(pvesh get /cluster/nextid 2>/dev/null || echo 100)}"
+
+  # Ensure we have a valid starting ID
+  if ! [[ "$suggested_id" =~ ^[0-9]+$ ]]; then
+    suggested_id=$(pvesh get /cluster/nextid 2>/dev/null || echo 100)
+  fi
+
+  local max_attempts=1000
+  local attempts=0
 
   while ! validate_container_id "$suggested_id"; do
     suggested_id=$((suggested_id + 1))
-  done
-
-  echo "$suggested_id"
-}
-
-# ------------------------------------------------------------------------------
-# validate_container_id()
-#
-# - Validates if a container ID is available for use
-# - Checks if ID is already used by VM or LXC container
-# - Checks if ID is used in LVM logical volumes
-# - Returns 0 if ID is available, 1 if already in use
-# ------------------------------------------------------------------------------
-validate_container_id() {
-  local ctid="$1"
-
-  # Check if ID is numeric
-  if ! [[ "$ctid" =~ ^[0-9]+$ ]]; then
-    return 1
-  fi
-
-  # Check if config file exists for VM or LXC
-  if [[ -f "/etc/pve/qemu-server/${ctid}.conf" ]] || [[ -f "/etc/pve/lxc/${ctid}.conf" ]]; then
-    return 1
-  fi
-
-  # Check if ID is used in LVM logical volumes
-  if lvs --noheadings -o lv_name 2>/dev/null | grep -qE "(^|[-_])${ctid}($|[-_])"; then
-    return 1
-  fi
-
-  return 0
-}
-
-# ------------------------------------------------------------------------------
-# get_valid_container_id()
-#
-# - Returns a valid, unused container ID
-# - If provided ID is valid, returns it
-# - Otherwise increments from suggested ID until a free one is found
-# - Calls validate_container_id() to check availability
-# ------------------------------------------------------------------------------
-get_valid_container_id() {
-  local suggested_id="${1:-$(pvesh get /cluster/nextid)}"
-
-  while ! validate_container_id "$suggested_id"; do
-    suggested_id=$((suggested_id + 1))
+    attempts=$((attempts + 1))
+    if [[ $attempts -ge $max_attempts ]]; then
+      msg_error "Could not find available container ID after $max_attempts attempts"
+      exit 1
+    fi
   done
 
   echo "$suggested_id"
@@ -363,7 +378,7 @@ validate_hostname() {
 
   # Split by dots and validate each label
   local IFS='.'
-  read -ra labels <<< "$hostname"
+  read -ra labels <<<"$hostname"
   for label in "${labels[@]}"; do
     # Each label: 1-63 chars, alphanumeric, hyphens allowed (not at start/end)
     if [[ -z "$label" ]] || [[ ${#label} -gt 63 ]]; then
@@ -467,7 +482,7 @@ validate_ipv6_address() {
   # Check that no segment exceeds 4 hex chars
   local IFS=':'
   local -a segments
-  read -ra segments <<< "$addr"
+  read -ra segments <<<"$addr"
   for seg in "${segments[@]}"; do
     if [[ ${#seg} -gt 4 ]]; then
       return 1
@@ -517,14 +532,14 @@ validate_gateway_in_subnet() {
 
   # Convert IPs to integers
   local IFS='.'
-  read -r i1 i2 i3 i4 <<< "$ip"
-  read -r g1 g2 g3 g4 <<< "$gateway"
+  read -r i1 i2 i3 i4 <<<"$ip"
+  read -r g1 g2 g3 g4 <<<"$gateway"
 
-  local ip_int=$(( (i1 << 24) + (i2 << 16) + (i3 << 8) + i4 ))
-  local gw_int=$(( (g1 << 24) + (g2 << 16) + (g3 << 8) + g4 ))
+  local ip_int=$(((i1 << 24) + (i2 << 16) + (i3 << 8) + i4))
+  local gw_int=$(((g1 << 24) + (g2 << 16) + (g3 << 8) + g4))
 
   # Check if both are in same network
-  if (( (ip_int & mask) != (gw_int & mask) )); then
+  if (((ip_int & mask) != (gw_int & mask))); then
     return 1
   fi
 
@@ -968,7 +983,7 @@ base_settings() {
   fi
 
   MTU=${var_mtu:-""}
-  SD=${var_storage:-""}
+  SD=${var_searchdomain:-""}
   NS=${var_ns:-""}
   MAC=${var_mac:-""}
   VLAN=${var_vlan:-""}
@@ -1057,113 +1072,117 @@ load_vars_file() {
       # Validate values before setting (skip empty values - they use defaults)
       if [[ -n "$var_val" ]]; then
         case "$var_key" in
-          var_mac)
-            if ! validate_mac_address "$var_val"; then
-              msg_warn "Invalid MAC address '$var_val' in $file, ignoring"
+        var_mac)
+          if ! validate_mac_address "$var_val"; then
+            msg_warn "Invalid MAC address '$var_val' in $file, ignoring"
+            continue
+          fi
+          ;;
+        var_vlan)
+          if ! validate_vlan_tag "$var_val"; then
+            msg_warn "Invalid VLAN tag '$var_val' in $file (must be 1-4094), ignoring"
+            continue
+          fi
+          ;;
+        var_mtu)
+          if ! validate_mtu "$var_val"; then
+            msg_warn "Invalid MTU '$var_val' in $file (must be 576-65535), ignoring"
+            continue
+          fi
+          ;;
+        var_tags)
+          if ! validate_tags "$var_val"; then
+            msg_warn "Invalid tags '$var_val' in $file (alphanumeric, -, _, ; only), ignoring"
+            continue
+          fi
+          ;;
+        var_timezone)
+          if ! validate_timezone "$var_val"; then
+            msg_warn "Invalid timezone '$var_val' in $file, ignoring"
+            continue
+          fi
+          ;;
+        var_brg)
+          if ! validate_bridge "$var_val"; then
+            msg_warn "Bridge '$var_val' not found in $file, ignoring"
+            continue
+          fi
+          ;;
+        var_gateway)
+          if ! validate_gateway_ip "$var_val"; then
+            msg_warn "Invalid gateway IP '$var_val' in $file, ignoring"
+            continue
+          fi
+          ;;
+        var_hostname)
+          if ! validate_hostname "$var_val"; then
+            msg_warn "Invalid hostname '$var_val' in $file, ignoring"
+            continue
+          fi
+          ;;
+        var_cpu)
+          if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 1 || var_val > 128)); then
+            msg_warn "Invalid CPU count '$var_val' in $file (must be 1-128), ignoring"
+            continue
+          fi
+          ;;
+        var_ram)
+          if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 256)); then
+            msg_warn "Invalid RAM '$var_val' in $file (must be >= 256 MiB), ignoring"
+            continue
+          fi
+          ;;
+        var_disk)
+          if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 1)); then
+            msg_warn "Invalid disk size '$var_val' in $file (must be >= 1 GB), ignoring"
+            continue
+          fi
+          ;;
+        var_unprivileged)
+          if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
+            msg_warn "Invalid unprivileged value '$var_val' in $file (must be 0 or 1), ignoring"
+            continue
+          fi
+          ;;
+        var_nesting)
+          if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
+            msg_warn "Invalid nesting value '$var_val' in $file (must be 0 or 1), ignoring"
+            continue
+          fi
+          # Warn about potential issues with systemd-based OS when nesting is disabled via vars file
+          if [[ "$var_val" == "0" && "${var_os:-debian}" != "alpine" ]]; then
+            msg_warn "Nesting disabled in $file - modern systemd-based distributions may require nesting for proper operation"
+          fi
+          ;;
+        var_keyctl)
+          if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
+            msg_warn "Invalid keyctl value '$var_val' in $file (must be 0 or 1), ignoring"
+            continue
+          fi
+          ;;
+        var_net)
+          # var_net can be: dhcp, static IP/CIDR, or IP range
+          if [[ "$var_val" != "dhcp" ]]; then
+            if is_ip_range "$var_val"; then
+              : # IP range is valid, will be resolved at runtime
+            elif ! validate_ip_address "$var_val"; then
+              msg_warn "Invalid network '$var_val' in $file (must be dhcp or IP/CIDR), ignoring"
               continue
             fi
-            ;;
-          var_vlan)
-            if ! validate_vlan_tag "$var_val"; then
-              msg_warn "Invalid VLAN tag '$var_val' in $file (must be 1-4094), ignoring"
-              continue
-            fi
-            ;;
-          var_mtu)
-            if ! validate_mtu "$var_val"; then
-              msg_warn "Invalid MTU '$var_val' in $file (must be 576-65535), ignoring"
-              continue
-            fi
-            ;;
-          var_tags)
-            if ! validate_tags "$var_val"; then
-              msg_warn "Invalid tags '$var_val' in $file (alphanumeric, -, _, ; only), ignoring"
-              continue
-            fi
-            ;;
-          var_timezone)
-            if ! validate_timezone "$var_val"; then
-              msg_warn "Invalid timezone '$var_val' in $file, ignoring"
-              continue
-            fi
-            ;;
-          var_brg)
-            if ! validate_bridge "$var_val"; then
-              msg_warn "Bridge '$var_val' not found in $file, ignoring"
-              continue
-            fi
-            ;;
-          var_gateway)
-            if ! validate_gateway_ip "$var_val"; then
-              msg_warn "Invalid gateway IP '$var_val' in $file, ignoring"
-              continue
-            fi
-            ;;
-          var_hostname)
-            if ! validate_hostname "$var_val"; then
-              msg_warn "Invalid hostname '$var_val' in $file, ignoring"
-              continue
-            fi
-            ;;
-          var_cpu)
-            if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 1 || var_val > 128)); then
-              msg_warn "Invalid CPU count '$var_val' in $file (must be 1-128), ignoring"
-              continue
-            fi
-            ;;
-          var_ram)
-            if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 256)); then
-              msg_warn "Invalid RAM '$var_val' in $file (must be >= 256 MiB), ignoring"
-              continue
-            fi
-            ;;
-          var_disk)
-            if ! [[ "$var_val" =~ ^[0-9]+$ ]] || ((var_val < 1)); then
-              msg_warn "Invalid disk size '$var_val' in $file (must be >= 1 GB), ignoring"
-              continue
-            fi
-            ;;
-          var_unprivileged)
-            if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
-              msg_warn "Invalid unprivileged value '$var_val' in $file (must be 0 or 1), ignoring"
-              continue
-            fi
-            ;;
-          var_nesting)
-            if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
-              msg_warn "Invalid nesting value '$var_val' in $file (must be 0 or 1), ignoring"
-              continue
-            fi
-            ;;
-          var_keyctl)
-            if [[ "$var_val" != "0" && "$var_val" != "1" ]]; then
-              msg_warn "Invalid keyctl value '$var_val' in $file (must be 0 or 1), ignoring"
-              continue
-            fi
-            ;;
-          var_net)
-            # var_net can be: dhcp, static IP/CIDR, or IP range
-            if [[ "$var_val" != "dhcp" ]]; then
-              if is_ip_range "$var_val"; then
-                : # IP range is valid, will be resolved at runtime
-              elif ! validate_ip_address "$var_val"; then
-                msg_warn "Invalid network '$var_val' in $file (must be dhcp or IP/CIDR), ignoring"
-                continue
-              fi
-            fi
-            ;;
-          var_fuse|var_tun|var_gpu|var_ssh|var_verbose|var_protection)
-            if [[ "$var_val" != "yes" && "$var_val" != "no" ]]; then
-              msg_warn "Invalid boolean '$var_val' for $var_key in $file (must be yes/no), ignoring"
-              continue
-            fi
-            ;;
-          var_ipv6_method)
-            if [[ "$var_val" != "auto" && "$var_val" != "dhcp" && "$var_val" != "static" && "$var_val" != "none" ]]; then
-              msg_warn "Invalid IPv6 method '$var_val' in $file (must be auto/dhcp/static/none), ignoring"
-              continue
-            fi
-            ;;
+          fi
+          ;;
+        var_fuse | var_tun | var_gpu | var_ssh | var_verbose | var_protection)
+          if [[ "$var_val" != "yes" && "$var_val" != "no" ]]; then
+            msg_warn "Invalid boolean '$var_val' for $var_key in $file (must be yes/no), ignoring"
+            continue
+          fi
+          ;;
+        var_ipv6_method)
+          if [[ "$var_val" != "auto" && "$var_val" != "dhcp" && "$var_val" != "static" && "$var_val" != "none" ]]; then
+            msg_warn "Invalid IPv6 method '$var_val' in $file (must be auto/dhcp/static/none), ignoring"
+            continue
+          fi
+          ;;
         esac
       fi
 
@@ -1791,7 +1810,7 @@ advanced_settings() {
     if [[ -n "$BRIDGES" ]]; then
       while IFS= read -r bridge; do
         if [[ -n "$bridge" ]]; then
-          local description=$(grep -A 10 "iface $bridge" /etc/network/interfaces 2>/dev/null | grep '^#' | head -n1 | sed 's/^#\s*//')
+          local description=$(grep -A 10 "iface $bridge" /etc/network/interfaces 2>/dev/null | grep '^#' | head -n1 | sed 's/^#\s*//;s/^[- ]*//')
           BRIDGE_MENU_OPTIONS+=("$bridge" "${description:- }")
         fi
       done <<<"$BRIDGES"
@@ -2023,6 +2042,10 @@ advanced_settings() {
           "${BRIDGE_MENU_OPTIONS[@]}" \
           3>&1 1>&2 2>&3); then
           local bridge_test="${result:-vmbr0}"
+          # Skip separator entries (e.g., __other__) - re-display menu
+          if [[ "$bridge_test" == "__other__" || "$bridge_test" == -* ]]; then
+            continue
+          fi
           if validate_bridge "$bridge_test"; then
             _bridge="$bridge_test"
             ((STEP++))
@@ -2394,6 +2417,12 @@ advanced_settings() {
       else
         if [ $? -eq 1 ]; then
           _enable_nesting="0"
+          # Warn about potential issues with systemd-based OS when nesting is disabled
+          if [[ "$var_os" != "alpine" ]]; then
+            whiptail --backtitle "Proxmox VE Helper Scripts" \
+              --title "⚠️ NESTING WARNING" \
+              --msgbox "Modern systemd-based distributions (Debian 13+, Ubuntu 24.04+, etc.) may require nesting to be enabled for proper operation.\n\nWithout nesting, the container may start in a degraded state with failing services (error 243/CREDENTIALS).\n\nIf you experience issues, enable nesting in the container options." 14 68
+          fi
         else
           ((STEP--))
           continue
@@ -2727,7 +2756,27 @@ Advanced:
   [[ -n "${CT_TIMEZONE:-}" ]] && echo -e "${INFO}${BOLD}${DGN}Timezone: ${BGN}$CT_TIMEZONE${CL}"
   [[ "$APT_CACHER" == "yes" ]] && echo -e "${INFO}${BOLD}${DGN}APT Cacher: ${BGN}$APT_CACHER_IP${CL}"
   echo -e "${SEARCH}${BOLD}${DGN}Verbose Mode: ${BGN}$VERBOSE${CL}"
-  echo -e "${CREATING}${BOLD}${RD}Creating a ${APP} LXC using the above advanced settings${CL}"
+  echo -e "${CREATING}${BOLD}${RD}Creating an LXC of ${APP} using the above advanced settings${CL}"
+
+  # Log settings to file
+  log_section "CONTAINER SETTINGS (ADVANCED) - ${APP}"
+  log_msg "Application: ${APP}"
+  log_msg "PVE Version: ${PVEVERSION} (Kernel: ${KERNEL_VERSION})"
+  log_msg "Operating System: $var_os ($var_version)"
+  log_msg "Container Type: $([ "$CT_TYPE" == "1" ] && echo "Unprivileged" || echo "Privileged")"
+  log_msg "Container ID: $CT_ID"
+  log_msg "Hostname: $HN"
+  log_msg "Disk Size: ${DISK_SIZE} GB"
+  log_msg "CPU Cores: $CORE_COUNT"
+  log_msg "RAM Size: ${RAM_SIZE} MiB"
+  log_msg "Bridge: $BRG"
+  log_msg "IPv4: $NET"
+  log_msg "IPv6: $IPV6_METHOD"
+  log_msg "FUSE Support: ${ENABLE_FUSE:-no}"
+  log_msg "Nesting: $([ "${ENABLE_NESTING:-1}" == "1" ] && echo "Enabled" || echo "Disabled")"
+  log_msg "GPU Passthrough: ${ENABLE_GPU:-no}"
+  log_msg "Verbose Mode: $VERBOSE"
+  log_msg "Session ID: ${SESSION_ID}"
 }
 
 # ==============================================================================
@@ -2835,6 +2884,7 @@ diagnostics_menu() {
 # - Prints summary of default values (ID, OS, type, disk, RAM, CPU, etc.)
 # - Uses icons and formatting for readability
 # - Convert CT_TYPE to description
+# - Also logs settings to log file for debugging
 # ------------------------------------------------------------------------------
 echo_default() {
   CT_TYPE_DESC="Unprivileged"
@@ -2856,6 +2906,20 @@ echo_default() {
   fi
   echo -e "${CREATING}${BOLD}${BL}Creating a ${APP} LXC using the above default settings${CL}"
   echo -e "  "
+
+  # Log settings to file
+  log_section "CONTAINER SETTINGS - ${APP}"
+  log_msg "Application: ${APP}"
+  log_msg "PVE Version: ${PVEVERSION} (Kernel: ${KERNEL_VERSION})"
+  log_msg "Container ID: ${CT_ID}"
+  log_msg "Operating System: $var_os ($var_version)"
+  log_msg "Container Type: $CT_TYPE_DESC"
+  log_msg "Disk Size: ${DISK_SIZE} GB"
+  log_msg "CPU Cores: ${CORE_COUNT}"
+  log_msg "RAM Size: ${RAM_SIZE} MiB"
+  [[ -n "${var_gpu:-}" && "${var_gpu}" == "yes" ]] && log_msg "GPU Passthrough: Enabled"
+  [[ "$VERBOSE" == "yes" ]] && log_msg "Verbose Mode: Enabled"
+  log_msg "Session ID: ${SESSION_ID}"
 }
 
 # ------------------------------------------------------------------------------
@@ -3042,10 +3106,10 @@ settings_menu() {
 
     case "$choice" in
     1) diagnostics_menu ;;
-    2) nano /usr/local/community-scripts/default.vars ;;
+    2) ${EDITOR:-nano} /usr/local/community-scripts/default.vars ;;
     3)
       if [ -f "$(get_app_defaults_path)" ]; then
-        nano "$(get_app_defaults_path)"
+        ${EDITOR:-nano} "$(get_app_defaults_path)"
       else
         # Back was selected (no app.vars available)
         return
@@ -3283,6 +3347,70 @@ configure_ssh_settings() {
 }
 
 # ------------------------------------------------------------------------------
+# msg_menu()
+#
+# - Displays a numbered menu for update_script() functions
+# - In silent mode (PHS_SILENT=1): auto-selects the default option
+# - In interactive mode: shows menu via read with 10s timeout + default fallback
+# - Usage: CHOICE=$(msg_menu "Title" "tag1" "Description 1" "tag2" "Desc 2" ...)
+# - The first item is always the default
+# - Returns the selected tag to stdout
+# - If no valid selection or timeout, returns the default (first) tag
+# ------------------------------------------------------------------------------
+msg_menu() {
+  local title="$1"
+  shift
+
+  # Parse items into parallel arrays: tags[] and descriptions[]
+  local -a tags=()
+  local -a descs=()
+  while [[ $# -ge 2 ]]; do
+    tags+=("$1")
+    descs+=("$2")
+    shift 2
+  done
+
+  local default_tag="${tags[0]}"
+  local count=${#tags[@]}
+
+  # Silent mode: return default immediately
+  if [[ -n "${PHS_SILENT+x}" ]] && [[ "${PHS_SILENT}" == "1" ]]; then
+    echo "$default_tag"
+    return 0
+  fi
+
+  # Display menu to /dev/tty so it doesn't get captured by command substitution
+  {
+    echo ""
+    msg_custom "📋" "${BL}" "${title}"
+    echo ""
+    for i in "${!tags[@]}"; do
+      local marker="  "
+      [[ $i -eq 0 ]] && marker="* "
+      printf "${TAB3}${marker}%s) %s\n" "${tags[$i]}" "${descs[$i]}"
+    done
+    echo ""
+  } >/dev/tty
+
+  local selection=""
+  read -r -t 10 -p "${TAB3}Select [default=${default_tag}, timeout 10s]: " selection </dev/tty >/dev/tty || true
+
+  # Validate selection
+  if [[ -n "$selection" ]]; then
+    for tag in "${tags[@]}"; do
+      if [[ "$selection" == "$tag" ]]; then
+        echo "$selection"
+        return 0
+      fi
+    done
+    msg_warn "Invalid selection '${selection}' - using default: ${default_tag}"
+  fi
+
+  echo "$default_tag"
+  return 0
+}
+
+# ------------------------------------------------------------------------------
 # start()
 #
 # - Entry point of script
@@ -3300,6 +3428,7 @@ start() {
     set_std_mode
     ensure_profile_loaded
     update_script
+    update_motd_ip
     cleanup_lxc
   else
     CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP} LXC Update/Setting" --menu \
@@ -3326,6 +3455,7 @@ start() {
     esac
     ensure_profile_loaded
     update_script
+    update_motd_ip
     cleanup_lxc
   fi
 }
@@ -3534,6 +3664,9 @@ $PCT_OPTIONS_STRING"
       exit 214
     fi
     msg_ok "Storage space validated"
+
+    # Report installation start to API (early - captures failed installs too)
+    post_to_api
   fi
 
   create_lxc_container || exit $?
@@ -3844,6 +3977,17 @@ EOF
 
   fix_gpu_gids
 
+  # Fix Debian 13 LXC template bug where / is owned by nobody:nogroup
+  # This must be done from the host as unprivileged containers cannot chown /
+  local rootfs
+  rootfs=$(pct config "$CTID" | grep -E '^rootfs:' | sed 's/rootfs: //' | cut -d',' -f1)
+  if [[ -n "$rootfs" ]]; then
+    local mount_point="/var/lib/lxc/${CTID}/rootfs"
+    if [[ -d "$mount_point" ]] && [[ "$(stat -c '%U' "$mount_point")" != "root" ]]; then
+      chown root:root "$mount_point" 2>/dev/null || true
+    fi
+  fi
+
   # Continue with standard container setup
   msg_info "Customizing LXC Container"
 
@@ -3897,6 +4041,9 @@ EOF'
   # Install SSH keys
   install_ssh_keys_into_ct
 
+  # Start timer for duration tracking
+  start_install_timer
+
   # Run application installer
   # Disable error trap - container errors are handled internally via flag file
   set +Eeuo pipefail # Disable ALL error handling temporarily
@@ -3927,25 +4074,58 @@ EOF'
   if [[ $install_exit_code -ne 0 ]]; then
     msg_error "Installation failed in container ${CTID} (exit code: ${install_exit_code})"
 
-    # Copy both logs from container before potential deletion
+    # Copy install log from container BEFORE API call so get_error_text() can read it
     local build_log_copied=false
     local install_log_copied=false
+    local combined_log="/tmp/${NSAPP:-lxc}-${CTID}-${SESSION_ID}.log"
 
     if [[ -n "$CTID" && -n "${SESSION_ID:-}" ]]; then
-      # Copy BUILD_LOG (creation log) if it exists
+      # Create combined log with header
+      {
+        echo "================================================================================"
+        echo "COMBINED INSTALLATION LOG - ${APP:-LXC}"
+        echo "Container ID: ${CTID}"
+        echo "Session ID: ${SESSION_ID}"
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "================================================================================"
+        echo ""
+      } >"$combined_log"
+
+      # Append BUILD_LOG (host-side creation log) if it exists
       if [[ -f "${BUILD_LOG}" ]]; then
-        cp "${BUILD_LOG}" "/tmp/create-lxc-${CTID}-${SESSION_ID}.log" 2>/dev/null && build_log_copied=true
+        {
+          echo "================================================================================"
+          echo "PHASE 1: CONTAINER CREATION (Host)"
+          echo "================================================================================"
+          cat "${BUILD_LOG}"
+          echo ""
+        } >>"$combined_log"
+        build_log_copied=true
       fi
 
-      # Copy INSTALL_LOG from container
-      if pct pull "$CTID" "/root/.install-${SESSION_ID}.log" "/tmp/install-lxc-${CTID}-${SESSION_ID}.log" 2>/dev/null; then
+      # Copy and append INSTALL_LOG from container
+      local temp_install_log="/tmp/.install-temp-${SESSION_ID}.log"
+      if pct pull "$CTID" "/root/.install-${SESSION_ID}.log" "$temp_install_log" 2>/dev/null; then
+        {
+          echo "================================================================================"
+          echo "PHASE 2: APPLICATION INSTALLATION (Container)"
+          echo "================================================================================"
+          cat "$temp_install_log"
+          echo ""
+        } >>"$combined_log"
+        rm -f "$temp_install_log"
         install_log_copied=true
+        # Point INSTALL_LOG to combined log so get_error_text() finds it
+        INSTALL_LOG="$combined_log"
       fi
+    fi
 
-      # Show available logs
-      echo ""
-      [[ "$build_log_copied" == true ]] && echo -e "${GN}✔${CL} Container creation log: ${BL}/tmp/create-lxc-${CTID}-${SESSION_ID}.log${CL}"
-      [[ "$install_log_copied" == true ]] && echo -e "${GN}✔${CL} Installation log: ${BL}/tmp/install-lxc-${CTID}-${SESSION_ID}.log${CL}"
+    # Report failure to telemetry API (now with log available on host)
+    post_update_to_api "failed" "$install_exit_code"
+
+    # Show combined log location
+    if [[ -n "$CTID" && -n "${SESSION_ID:-}" ]]; then
+      msg_custom "📋" "${YW}" "Installation log: ${combined_log}"
     fi
 
     # Dev mode: Keep container or open breakpoint shell
@@ -3968,9 +4148,9 @@ EOF'
       exit $install_exit_code
     fi
 
-    # Prompt user for cleanup with 60s timeout (plain echo - no msg_info to avoid spinner)
+    # Prompt user for cleanup with 60s timeout
     echo ""
-    
+
     # Detect error type for smart recovery options
     local is_oom=false
     local error_explanation=""
@@ -4093,12 +4273,16 @@ EOF'
       esac
     else
       # Timeout - auto-remove
-      echo -e "\n${YW}No response - auto-removing container${CL}"
-      echo -e "${TAB}${HOLD}${YW}Removing container ${CTID}${CL}"
+      echo ""
+      msg_info "No response - removing container ${CTID}"
       pct stop "$CTID" &>/dev/null || true
       pct destroy "$CTID" &>/dev/null || true
-      echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
+      msg_ok "Container ${CTID} removed"
     fi
+
+    # Force one final status update attempt after cleanup
+    # This ensures status is updated even if the first attempt failed (e.g., HTTP 400)
+    post_update_to_api "failed" "$install_exit_code" "force"
 
     exit $install_exit_code
   fi
@@ -5104,24 +5288,86 @@ EOF
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# ensure_log_on_host()
+#
+# - Ensures INSTALL_LOG points to a readable file on the host
+# - If INSTALL_LOG points to a container path (e.g. /root/.install-*),
+#   tries to pull it from the container and create a combined log
+# - This allows get_error_text() to find actual error output for telemetry
+# ------------------------------------------------------------------------------
+ensure_log_on_host() {
+  # Already readable on host? Nothing to do.
+  [[ -n "${INSTALL_LOG:-}" && -s "${INSTALL_LOG}" ]] && return 0
+
+  # Try pulling from container and creating combined log
+  if [[ -n "${CTID:-}" && -n "${SESSION_ID:-}" ]] && command -v pct &>/dev/null; then
+    local combined_log="/tmp/${NSAPP:-lxc}-${CTID}-${SESSION_ID}.log"
+    if [[ ! -s "$combined_log" ]]; then
+      # Create combined log
+      {
+        echo "================================================================================"
+        echo "COMBINED INSTALLATION LOG - ${APP:-LXC}"
+        echo "Container ID: ${CTID}"
+        echo "Session ID: ${SESSION_ID}"
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "================================================================================"
+        echo ""
+      } >"$combined_log" 2>/dev/null || return 0
+      # Append BUILD_LOG if it exists
+      if [[ -f "${BUILD_LOG:-}" ]]; then
+        {
+          echo "================================================================================"
+          echo "PHASE 1: CONTAINER CREATION (Host)"
+          echo "================================================================================"
+          cat "${BUILD_LOG}"
+          echo ""
+        } >>"$combined_log"
+      fi
+      # Pull INSTALL_LOG from container
+      local temp_log="/tmp/.install-temp-${SESSION_ID}.log"
+      if pct pull "$CTID" "/root/.install-${SESSION_ID}.log" "$temp_log" 2>/dev/null; then
+        {
+          echo "================================================================================"
+          echo "PHASE 2: APPLICATION INSTALLATION (Container)"
+          echo "================================================================================"
+          cat "$temp_log"
+          echo ""
+        } >>"$combined_log"
+        rm -f "$temp_log"
+      fi
+    fi
+    if [[ -s "$combined_log" ]]; then
+      INSTALL_LOG="$combined_log"
+    fi
+  fi
+}
+
+# ------------------------------------------------------------------------------
 # api_exit_script()
 #
 # - Exit trap handler for reporting to API telemetry
-# - Captures exit code and reports to API using centralized error descriptions
-# - Uses explain_exit_code() from error_handler.func for consistent error messages
-# - Posts failure status with exit code to API (error description added automatically)
-# - Only executes on non-zero exit codes
+# - Captures exit code and reports to PocketBase using centralized error descriptions
+# - Uses explain_exit_code() from api.func for consistent error messages
+# - For non-zero exit codes: posts "failed" status
+# - For zero exit codes where post_update_to_api was never called:
+#   catches orphaned "installing" records (e.g., script exited cleanly
+#   but description() was never reached)
 # ------------------------------------------------------------------------------
 api_exit_script() {
-  exit_code=$?
+  local exit_code=$?
   if [ $exit_code -ne 0 ]; then
+    ensure_log_on_host
     post_update_to_api "failed" "$exit_code"
+  elif [[ "${POST_TO_API_DONE:-}" == "true" && "${POST_UPDATE_DONE:-}" != "true" ]]; then
+    # Script exited with 0 but never sent a completion status
+    # This catches edge cases like early returns after post_to_api()
+    post_update_to_api "failed" "1"
   fi
 }
 
 if command -v pveversion >/dev/null 2>&1; then
   trap 'api_exit_script' EXIT
 fi
-trap 'post_update_to_api "failed" "$BASH_COMMAND"' ERR
-trap 'post_update_to_api "failed" "INTERRUPTED"' SIGINT
-trap 'post_update_to_api "failed" "TERMINATED"' SIGTERM
+trap 'ensure_log_on_host; post_update_to_api "failed" "$?"' ERR
+trap 'ensure_log_on_host; post_update_to_api "failed" "130"; exit 130' SIGINT
+trap 'ensure_log_on_host; post_update_to_api "failed" "143"; exit 143' SIGTERM
