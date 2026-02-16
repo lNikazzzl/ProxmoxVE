@@ -297,7 +297,7 @@ validate_container_id() {
   # Falls back gracefully if pvesh unavailable or returns empty
   if command -v pvesh &>/dev/null; then
     local cluster_ids
-    cluster_ids=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null | 
+    cluster_ids=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null |
       grep -oP '"vmid":\s*\K[0-9]+' 2>/dev/null || true)
     if [[ -n "$cluster_ids" ]] && echo "$cluster_ids" | grep -qw "$ctid"; then
       return 1
@@ -4038,6 +4038,13 @@ EOF'
 
   msg_ok "Customized LXC Container"
 
+  # Optional DNS override for retry scenarios (inside LXC, never on host)
+  if [[ "${DNS_RETRY_OVERRIDE:-false}" == "true" ]]; then
+    msg_info "Applying DNS retry override in LXC (8.8.8.8, 1.1.1.1)"
+    pct exec "$CTID" -- bash -c "printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' >/etc/resolv.conf" >/dev/null 2>&1 || true
+    msg_ok "DNS override applied in LXC"
+  fi
+
   # Install SSH keys
   install_ssh_keys_into_ct
 
@@ -4153,123 +4160,199 @@ EOF'
 
     # Detect error type for smart recovery options
     local is_oom=false
+    local is_network_issue=false
     local error_explanation=""
     if declare -f explain_exit_code >/dev/null 2>&1; then
       error_explanation="$(explain_exit_code "$install_exit_code")"
     fi
-    
+
     # OOM detection: exit codes 134 (SIGABRT/heap), 137 (SIGKILL/OOM), 243 (Node.js heap)
     if [[ $install_exit_code -eq 134 || $install_exit_code -eq 137 || $install_exit_code -eq 243 ]]; then
       is_oom=true
     fi
-    
+
+    # Network-related detection (curl/apt/git fetch failures and transient network issues)
+    case "$install_exit_code" in
+    6 | 7 | 22 | 28 | 35 | 56 | 75 | 78 | 100) is_network_issue=true ;;
+    128)
+      if [[ -f "$combined_log" ]] && grep -qiE 'RPC failed|early EOF|fetch-pack|HTTP/2 stream|Could not resolve host|Temporary failure resolving|Failed to fetch|Connection reset|Network is unreachable' "$combined_log"; then
+        is_network_issue=true
+      fi
+      ;;
+    esac
+
     # Show error explanation if available
     if [[ -n "$error_explanation" ]]; then
       echo -e "${TAB}${RD}Error: ${error_explanation}${CL}"
       echo ""
     fi
-    
+
     # Build recovery menu based on error type
     echo -e "${YW}What would you like to do?${CL}"
     echo ""
     echo -e "  ${GN}1)${CL} Remove container and exit"
     echo -e "  ${GN}2)${CL} Keep container for debugging"
     echo -e "  ${GN}3)${CL} Retry with verbose mode"
+
+    local max_option=3
     if [[ "$is_oom" == true ]]; then
-      local new_ram=$((RAM_SIZE * 3 / 2))
-      local new_cpu=$((CORE_COUNT + 1))
+      local new_ram=$((RAM_SIZE * 2))
+      local new_cpu=$((CORE_COUNT * 2))
       echo -e "  ${GN}4)${CL} Retry with more resources (RAM: ${RAM_SIZE}→${new_ram} MiB, CPU: ${CORE_COUNT}→${new_cpu} cores)"
+      max_option=4
     fi
+
+    if [[ "$is_network_issue" == true ]]; then
+      if [[ "$max_option" -eq 3 ]]; then
+        echo -e "  ${GN}4)${CL} Retry with DNS override in LXC (8.8.8.8 / 1.1.1.1)"
+        max_option=4
+      else
+        echo -e "  ${GN}5)${CL} Retry with DNS override in LXC (8.8.8.8 / 1.1.1.1)"
+        max_option=5
+      fi
+    fi
+
     echo ""
-    echo -en "${YW}Select option [1-$([[ "$is_oom" == true ]] && echo "4" || echo "3")] (default: 1, auto-remove in 60s): ${CL}"
+    echo -en "${YW}Select option [1-${max_option}] (default: 1, auto-remove in 60s): ${CL}"
 
     if read -t 60 -r response; then
       case "${response:-1}" in
-        1)
-          # Remove container
-          echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID}${CL}"
-          pct stop "$CTID" &>/dev/null || true
-          pct destroy "$CTID" &>/dev/null || true
-          echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
-          ;;
-        2)
-          echo -e "\n${TAB}${YW}Container ${CTID} kept for debugging${CL}"
-          # Dev mode: Setup MOTD/SSH for debugging access to broken container
-          if [[ "${DEV_MODE_MOTD:-false}" == "true" ]]; then
-            echo -e "${TAB}${HOLD}${DGN}Setting up MOTD and SSH for debugging...${CL}"
-            if pct exec "$CTID" -- bash -c "
+      1)
+        # Remove container
+        echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID}${CL}"
+        pct stop "$CTID" &>/dev/null || true
+        pct destroy "$CTID" &>/dev/null || true
+        echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
+        ;;
+      2)
+        echo -e "\n${TAB}${YW}Container ${CTID} kept for debugging${CL}"
+        # Dev mode: Setup MOTD/SSH for debugging access to broken container
+        if [[ "${DEV_MODE_MOTD:-false}" == "true" ]]; then
+          echo -e "${TAB}${HOLD}${DGN}Setting up MOTD and SSH for debugging...${CL}"
+          if pct exec "$CTID" -- bash -c "
               source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)
               declare -f motd_ssh >/dev/null 2>&1 && motd_ssh || true
             " >/dev/null 2>&1; then
-              local ct_ip=$(pct exec "$CTID" ip a s dev eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1)
-              echo -e "${BFR}${CM}${GN}MOTD/SSH ready - SSH into container: ssh root@${ct_ip}${CL}"
-            fi
+            local ct_ip=$(pct exec "$CTID" ip a s dev eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1)
+            echo -e "${BFR}${CM}${GN}MOTD/SSH ready - SSH into container: ssh root@${ct_ip}${CL}"
           fi
-          exit $install_exit_code
-          ;;
-        3)
-          # Retry with verbose mode
-          echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild...${CL}"
+        fi
+        exit $install_exit_code
+        ;;
+      3)
+        # Retry with verbose mode
+        echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild...${CL}"
+        pct stop "$CTID" &>/dev/null || true
+        pct destroy "$CTID" &>/dev/null || true
+        echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
+        echo ""
+        # Get new container ID
+        local old_ctid="$CTID"
+        export CTID=$(get_valid_container_id "$CTID")
+        export VERBOSE="yes"
+        export var_verbose="yes"
+
+        # Show rebuild summary
+        echo -e "${YW}Rebuilding with preserved settings:${CL}"
+        echo -e "  Container ID: ${old_ctid} → ${CTID}"
+        echo -e "  RAM: ${RAM_SIZE} MiB | CPU: ${CORE_COUNT} cores | Disk: ${DISK_SIZE} GB"
+        echo -e "  Network: ${NET:-dhcp} | Bridge: ${BRG:-vmbr0}"
+        echo -e "  Verbose: ${GN}enabled${CL}"
+        echo ""
+        msg_info "Restarting installation..."
+        # Re-run build_container
+        build_container
+        return $?
+        ;;
+      4)
+        if [[ "$is_oom" == true ]]; then
+          # Retry with more resources
+          echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild with more resources...${CL}"
           pct stop "$CTID" &>/dev/null || true
           pct destroy "$CTID" &>/dev/null || true
           echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
           echo ""
-          # Get new container ID
+          # Get new container ID and increase resources
           local old_ctid="$CTID"
+          local old_ram="$RAM_SIZE"
+          local old_cpu="$CORE_COUNT"
           export CTID=$(get_valid_container_id "$CTID")
+          export RAM_SIZE=$((RAM_SIZE * 2))
+          export CORE_COUNT=$((CORE_COUNT * 2))
+          export var_ram="$RAM_SIZE"
+          export var_cpu="$CORE_COUNT"
           export VERBOSE="yes"
           export var_verbose="yes"
-          
+
           # Show rebuild summary
-          echo -e "${YW}Rebuilding with preserved settings:${CL}"
+          echo -e "${YW}Rebuilding with increased resources:${CL}"
           echo -e "  Container ID: ${old_ctid} → ${CTID}"
-          echo -e "  RAM: ${RAM_SIZE} MiB | CPU: ${CORE_COUNT} cores | Disk: ${DISK_SIZE} GB"
-          echo -e "  Network: ${NET:-dhcp} | Bridge: ${BRG:-vmbr0}"
+          echo -e "  RAM: ${old_ram} → ${GN}${RAM_SIZE}${CL} MiB (x2)"
+          echo -e "  CPU: ${old_cpu} → ${GN}${CORE_COUNT}${CL} cores (x2)"
+          echo -e "  Disk: ${DISK_SIZE} GB | Network: ${NET:-dhcp} | Bridge: ${BRG:-vmbr0}"
           echo -e "  Verbose: ${GN}enabled${CL}"
           echo ""
           msg_info "Restarting installation..."
           # Re-run build_container
           build_container
           return $?
-          ;;
-        4)
-          if [[ "$is_oom" == true ]]; then
-            # Retry with more resources
-            echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild with more resources...${CL}"
-            pct stop "$CTID" &>/dev/null || true
-            pct destroy "$CTID" &>/dev/null || true
-            echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
-            echo ""
-            # Get new container ID and increase resources
-            local old_ctid="$CTID"
-            local old_ram="$RAM_SIZE"
-            local old_cpu="$CORE_COUNT"
-            export CTID=$(get_valid_container_id "$CTID")
-            export RAM_SIZE=$((RAM_SIZE * 3 / 2))
-            export CORE_COUNT=$((CORE_COUNT + 1))
-            export var_ram="$RAM_SIZE"
-            export var_cpu="$CORE_COUNT"
-            
-            # Show rebuild summary
-            echo -e "${YW}Rebuilding with increased resources:${CL}"
-            echo -e "  Container ID: ${old_ctid} → ${CTID}"
-            echo -e "  RAM: ${old_ram} → ${GN}${RAM_SIZE}${CL} MiB (+50%)"
-            echo -e "  CPU: ${old_cpu} → ${GN}${CORE_COUNT}${CL} cores (+1)"
-            echo -e "  Disk: ${DISK_SIZE} GB | Network: ${NET:-dhcp} | Bridge: ${BRG:-vmbr0}"
-            echo ""
-            msg_info "Restarting installation..."
-            # Re-run build_container
-            build_container
-            return $?
-          else
-            echo -e "\n${TAB}${YW}Invalid option. Container ${CTID} kept.${CL}"
-            exit $install_exit_code
-          fi
-          ;;
-        *)
+        elif [[ "$is_network_issue" == true && "$max_option" -eq 4 ]]; then
+          # Retry with DNS override in LXC
+          echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild with DNS override...${CL}"
+          pct stop "$CTID" &>/dev/null || true
+          pct destroy "$CTID" &>/dev/null || true
+          echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
+          echo ""
+          local old_ctid="$CTID"
+          export CTID=$(get_valid_container_id "$CTID")
+          export DNS_RETRY_OVERRIDE="true"
+          export VERBOSE="yes"
+          export var_verbose="yes"
+
+          echo -e "${YW}Rebuilding with DNS override in LXC:${CL}"
+          echo -e "  Container ID: ${old_ctid} → ${CTID}"
+          echo -e "  DNS: ${GN}8.8.8.8, 1.1.1.1${CL} (inside LXC only)"
+          echo -e "  Verbose: ${GN}enabled${CL}"
+          echo ""
+          msg_info "Restarting installation..."
+          build_container
+          return $?
+        else
           echo -e "\n${TAB}${YW}Invalid option. Container ${CTID} kept.${CL}"
           exit $install_exit_code
-          ;;
+        fi
+        ;;
+      5)
+        if [[ "$is_network_issue" == true && "$is_oom" == true ]]; then
+          # Retry with DNS override in LXC (option 5 when OOM option occupies 4)
+          echo -e "\n${TAB}${HOLD}${YW}Removing container ${CTID} for rebuild with DNS override...${CL}"
+          pct stop "$CTID" &>/dev/null || true
+          pct destroy "$CTID" &>/dev/null || true
+          echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
+          echo ""
+          local old_ctid="$CTID"
+          export CTID=$(get_valid_container_id "$CTID")
+          export DNS_RETRY_OVERRIDE="true"
+          export VERBOSE="yes"
+          export var_verbose="yes"
+
+          echo -e "${YW}Rebuilding with DNS override in LXC:${CL}"
+          echo -e "  Container ID: ${old_ctid} → ${CTID}"
+          echo -e "  DNS: ${GN}8.8.8.8, 1.1.1.1${CL} (inside LXC only)"
+          echo -e "  Verbose: ${GN}enabled${CL}"
+          echo ""
+          msg_info "Restarting installation..."
+          build_container
+          return $?
+        else
+          echo -e "\n${TAB}${YW}Invalid option. Container ${CTID} kept.${CL}"
+          exit $install_exit_code
+        fi
+        ;;
+      *)
+        echo -e "\n${TAB}${YW}Invalid option. Container ${CTID} kept.${CL}"
+        exit $install_exit_code
+        ;;
       esac
     else
       # Timeout - auto-remove
