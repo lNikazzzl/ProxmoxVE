@@ -4190,7 +4190,7 @@ EOF'
 
     # Network-related detection (curl/apt/git fetch failures and transient network issues)
     case "$install_exit_code" in
-    6 | 7 | 22 | 28 | 35 | 56 | 75 | 78) is_network_issue=true ;;
+    6 | 7 | 22 | 28 | 35 | 52 | 56 | 57 | 75 | 78) is_network_issue=true ;;
     100)
       # APT can fail due to network (Failed to fetch)
       if [[ -f "$combined_log" ]] && grep -qiE 'Failed to fetch|Could not resolve|Connection failed|Network is unreachable|Temporary failure resolving' "$combined_log"; then
@@ -4231,6 +4231,12 @@ EOF'
     if [[ $install_exit_code -eq 10 ]]; then
       echo -e "${TAB}${INFO} This error usually means the container needs ${GN}privileged${CL} mode or Docker/nesting support."
       echo -e "${TAB}${INFO} Recreate with: Advanced Install → Container Type: ${GN}Privileged${CL}"
+      echo ""
+    fi
+
+    if [[ $install_exit_code -eq 125 || $install_exit_code -eq 126 ]]; then
+      echo -e "${TAB}${INFO} The command exists but cannot be executed. This may be a ${GN}permission${CL} issue."
+      echo -e "${TAB}${INFO} If using Docker, ensure the container is ${GN}privileged${CL} or has correct permissions."
       echo ""
     fi
 
@@ -5545,5 +5551,6 @@ if command -v pveversion >/dev/null 2>&1; then
   trap 'api_exit_script' EXIT
 fi
 trap 'ensure_log_on_host; post_update_to_api "failed" "$?"' ERR
+trap 'ensure_log_on_host; post_update_to_api "failed" "129"; exit 129' SIGHUP
 trap 'ensure_log_on_host; post_update_to_api "failed" "130"; exit 130' SIGINT
 trap 'ensure_log_on_host; post_update_to_api "failed" "143"; exit 143' SIGTERM
