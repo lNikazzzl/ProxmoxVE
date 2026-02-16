@@ -39,24 +39,19 @@ function update_script() {
         cp /opt/romm/.env /opt/romm/.env.backup
         msg_ok "Backed up configuration"
 
-        msg_info "Updating ROMM"
         fetch_and_deploy_gh_release "romm" "rommapp/romm" "tarball" "latest" "/opt/romm"
 
+        msg_info "Updating ROMM"
         cp /opt/romm/.env.backup /opt/romm/.env
-
         cd /opt/romm
         $STD uv sync --all-extras
-
         cd /opt/romm/backend
         $STD uv run alembic upgrade head
-
         cd /opt/romm/frontend
         $STD npm install
         $STD npm run build
-
         # Merge static assets into dist folder
         cp -rf /opt/romm/frontend/assets/* /opt/romm/frontend/dist/assets/
-
         mkdir -p /opt/romm/frontend/dist/assets/romm
         ln -sfn /var/lib/romm/resources /opt/romm/frontend/dist/assets/romm/resources
         ln -sfn /var/lib/romm/assets /opt/romm/frontend/dist/assets/romm/assets
