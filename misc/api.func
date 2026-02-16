@@ -624,6 +624,8 @@ EOF
   curl -fsS -m "${TELEMETRY_TIMEOUT}" -X POST "${TELEMETRY_URL}" \
     -H "Content-Type: application/json" \
     -d "$JSON_PAYLOAD" &>/dev/null || true
+
+  POST_TO_API_DONE=true
 }
 
 # ------------------------------------------------------------------------------
