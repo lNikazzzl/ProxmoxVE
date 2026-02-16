@@ -4262,17 +4262,26 @@ EOF'
     local APT_OPTION="" OOM_OPTION="" DNS_OPTION=""
 
     if [[ "$is_apt_issue" == true ]]; then
-      echo -e "  ${GN}${next_option})${CL} Repair APT/DPKG state and re-run install (in-place)"
+      if [[ "$var_os" == "alpine" ]]; then
+        echo -e "  ${GN}${next_option})${CL} Repair APK state and re-run install (in-place)"
+      else
+        echo -e "  ${GN}${next_option})${CL} Repair APT/DPKG state and re-run install (in-place)"
+      fi
       APT_OPTION=$next_option
       next_option=$((next_option + 1))
     fi
 
     if [[ "$is_oom" == true ]]; then
-      local new_ram=$((RAM_SIZE * 2))
-      local new_cpu=$((CORE_COUNT * 2))
-      echo -e "  ${GN}${next_option})${CL} Retry with more resources (RAM: ${RAM_SIZE}→${new_ram} MiB, CPU: ${CORE_COUNT}→${new_cpu} cores)"
-      OOM_OPTION=$next_option
-      next_option=$((next_option + 1))
+      local recovery_attempt="${RECOVERY_ATTEMPT:-0}"
+      if [[ $recovery_attempt -lt 2 ]]; then
+        local new_ram=$((RAM_SIZE * 2))
+        local new_cpu=$((CORE_COUNT * 2))
+        echo -e "  ${GN}${next_option})${CL} Retry with more resources (RAM: ${RAM_SIZE}→${new_ram} MiB, CPU: ${CORE_COUNT}→${new_cpu} cores)"
+        OOM_OPTION=$next_option
+        next_option=$((next_option + 1))
+      else
+        echo -e "  ${DGN}-)${CL} ${DGN}OOM retry exhausted (already retried ${recovery_attempt}x)${CL}"
+      fi
     fi
 
     if [[ "$is_network_issue" == true ]]; then
@@ -4340,16 +4349,26 @@ EOF'
         local handled=false
 
         if [[ -n "${APT_OPTION}" && "${response}" == "${APT_OPTION}" ]]; then
-          # APT/DPKG in-place repair: fix broken package state and re-run install script
+          # Package manager in-place repair: fix broken state and re-run install script
           handled=true
-          echo -e "\n${TAB}${HOLD}${YW}Repairing APT/DPKG state in container ${CTID}...${CL}"
-          pct exec "$CTID" -- bash -c "
-            DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true
-            apt-get -f install -y 2>/dev/null || true
-            apt-get clean 2>/dev/null
-            apt-get update 2>/dev/null || true
-          " >/dev/null 2>&1 || true
-          echo -e "${BFR}${CM}${GN}APT/DPKG state repaired in container ${CTID}${CL}"
+          if [[ "$var_os" == "alpine" ]]; then
+            echo -e "\n${TAB}${HOLD}${YW}Repairing APK state in container ${CTID}...${CL}"
+            pct exec "$CTID" -- ash -c "
+              apk fix 2>/dev/null || true
+              apk cache clean 2>/dev/null || true
+              apk update 2>/dev/null || true
+            " >/dev/null 2>&1 || true
+            echo -e "${BFR}${CM}${GN}APK state repaired in container ${CTID}${CL}"
+          else
+            echo -e "\n${TAB}${HOLD}${YW}Repairing APT/DPKG state in container ${CTID}...${CL}"
+            pct exec "$CTID" -- bash -c "
+              DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true
+              apt-get -f install -y 2>/dev/null || true
+              apt-get clean 2>/dev/null
+              apt-get update 2>/dev/null || true
+            " >/dev/null 2>&1 || true
+            echo -e "${BFR}${CM}${GN}APT/DPKG state repaired in container ${CTID}${CL}"
+          fi
           echo ""
           export VERBOSE="yes"
           export var_verbose="yes"
@@ -4410,8 +4429,9 @@ EOF'
           export var_cpu="$CORE_COUNT"
           export VERBOSE="yes"
           export var_verbose="yes"
+          export RECOVERY_ATTEMPT=$(( ${RECOVERY_ATTEMPT:-0} + 1 ))
 
-          echo -e "${YW}Rebuilding with increased resources:${CL}"
+          echo -e "${YW}Rebuilding with increased resources (attempt ${RECOVERY_ATTEMPT}/2):${CL}"
           echo -e "  Container ID: ${old_ctid} → ${CTID}"
           echo -e "  RAM: ${old_ram} → ${GN}${RAM_SIZE}${CL} MiB (x2)"
           echo -e "  CPU: ${old_cpu} → ${GN}${CORE_COUNT}${CL} cores (x2)"
