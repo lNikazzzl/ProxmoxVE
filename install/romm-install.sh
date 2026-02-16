@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
-# Author: DevelopmentCats
-# Co-author: AlphaLawless
+# Author: MickLesk (CanbiZ) | DevelopmentCats | AlphaLawless
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://romm.app
-# Updated: 25/12/2025
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
