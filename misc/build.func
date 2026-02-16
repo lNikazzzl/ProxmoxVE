@@ -5570,7 +5570,7 @@ api_exit_script() {
 if command -v pveversion >/dev/null 2>&1; then
   trap 'api_exit_script' EXIT
 fi
-trap 'ensure_log_on_host; post_update_to_api "failed" "$?"' ERR
+trap '_ERR_CODE=$?; ensure_log_on_host; post_update_to_api "failed" "$_ERR_CODE"' ERR
 trap 'ensure_log_on_host; post_update_to_api "failed" "129"; exit 129' SIGHUP
 trap 'ensure_log_on_host; post_update_to_api "failed" "130"; exit 130' SIGINT
 trap 'ensure_log_on_host; post_update_to_api "failed" "143"; exit 143' SIGTERM
