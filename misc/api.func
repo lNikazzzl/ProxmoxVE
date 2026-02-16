@@ -114,9 +114,14 @@ explain_exit_code() {
   22) echo "curl: HTTP error returned (404, 429, 500+)" ;;
   23) echo "curl: Write error (disk full or permissions)" ;;
   25) echo "curl: Upload failed" ;;
+  27) echo "curl: Out of memory (memory allocation failed)" ;;
   28) echo "curl: Operation timeout (network slow or server not responding)" ;;
   30) echo "curl: FTP port command failed" ;;
   35) echo "curl: SSL/TLS handshake failed (certificate error)" ;;
+  36) echo "curl: FTP bad download resume" ;;
+  45) echo "curl: Interface error (failed to bind to specified interface)" ;;
+  47) echo "curl: Too many redirects" ;;
+  55) echo "curl: Failed sending network data" ;;
   56) echo "curl: Receive error (connection reset by peer)" ;;
   75) echo "Temporary failure (retry later)" ;;
   78) echo "curl: Remote file not found (404 on FTP/file)" ;;
@@ -146,7 +151,9 @@ explain_exit_code() {
   126) echo "Command invoked cannot execute (permission problem?)" ;;
   127) echo "Command not found" ;;
   128) echo "Invalid argument to exit" ;;
+  129) echo "Killed by SIGHUP (terminal closed / hangup)" ;;
   130) echo "Aborted by user (SIGINT)" ;;
+  131) echo "Killed by SIGQUIT (core dumped)" ;;
   134) echo "Process aborted (SIGABRT - possibly Node.js heap overflow)" ;;
   137) echo "Killed (SIGKILL / Out of memory?)" ;;
   139) echo "Segmentation fault (core dumped)" ;;
@@ -209,7 +216,8 @@ explain_exit_code() {
   225) echo "Proxmox: No template available for OS/Version" ;;
   231) echo "Proxmox: LXC stack upgrade failed" ;;
 
-  # --- Node.js / npm / pnpm / yarn (243-249) ---
+  # --- Node.js / npm / pnpm / yarn (239-249) ---
+  239) echo "npm/Node.js: Unexpected runtime error or dependency failure" ;;
   243) echo "Node.js: Out of memory (JavaScript heap out of memory)" ;;
   245) echo "Node.js: Invalid command-line option" ;;
   246) echo "Node.js: Internal JavaScript Parse Error" ;;
