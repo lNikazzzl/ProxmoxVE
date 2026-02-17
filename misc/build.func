@@ -2817,13 +2817,13 @@ diagnostics_check() {
     "You can change this at any time in the Settings menu\n"
     "or by editing: ${config_file}\n\n"
     "More info: https://telemetry.community-scripts.org\n"
-    "Privacy:   https://github.com/community-scripts/ProxmoxVE/discussions/1836"
+    "Privacy:   https://github.com/community-scripts/telemetry-service#privacy--compliance"
   )
 
   if whiptail --backtitle "Proxmox VE Helper Scripts" \
     --title "TELEMETRY & DIAGNOSTICS" \
     --yesno "${dialog_text[*]}" 22 68 \
-    --yes-button "Yes, share data" --no-button "No, opt out"; then
+    --yes-button "Yes, share data" --no-button "No, opt out" --defaultno; then
     DIAGNOSTICS="yes"
   else
     DIAGNOSTICS="no"
@@ -2846,7 +2846,7 @@ DIAGNOSTICS=${DIAGNOSTICS}
 #   nsapp, method, pve_version, status, exit_code
 #
 # No personal data (IPs, hostnames, passwords) is ever collected.
-# Privacy: https://github.com/community-scripts/ProxmoxVE/discussions/1836
+# Privacy: https://github.com/community-scripts/telemetry-service#privacy--compliance
 EOF
 }
 
