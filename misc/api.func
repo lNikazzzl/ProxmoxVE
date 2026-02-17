@@ -25,8 +25,40 @@
 #   - Only anonymous statistics (no personal data)
 #   - User can opt-out via DIAGNOSTICS=no
 #   - Random UUID for session tracking only
-  10) echo "Docker / privileged mode required (unsupported environment)" ;;
+#   - Data retention: 30 days
+#
+# ==============================================================================
 
+# ==============================================================================
+# Telemetry Configuration
+# ==============================================================================
+TELEMETRY_URL="https://telemetry.community-scripts.org/telemetry"
+
+# Timeout for telemetry requests (seconds)
+TELEMETRY_TIMEOUT=5
+
+# ==============================================================================
+# SECTION 0: REPOSITORY SOURCE DETECTION
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# detect_repo_source()
+#
+# - Dynamically detects which GitHub/Gitea repo the scripts were loaded from
+# - Inspects /proc/$$/cmdline and $0 to find the source URL
+# - Maps detected repo to one of three canonical values:
+#   * "ProxmoxVE"  — official community-scripts/ProxmoxVE (production)
+#   * "ProxmoxVED" — official community-scripts/ProxmoxVED (development)
+#   * "external"   — any fork or unknown source
+# - Fallback: "ProxmoxVED" (CI sed transforms ProxmoxVED → ProxmoxVE on promotion)
+# - Sets and exports REPO_SOURCE global variable
+# - Skips detection if REPO_SOURCE is already set (e.g., by environment)
+# ------------------------------------------------------------------------------
+detect_repo_source() {
+  # Allow explicit override via environment
+  [[ -n "${REPO_SOURCE:-}" ]] && return 0
+
+  local content="" owner_repo=""
 
   # Method 1: Read from /proc/$$/cmdline
   # When invoked via: bash -c "$(curl -fsSL https://.../ct/app.sh)"
