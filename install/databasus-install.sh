@@ -89,7 +89,7 @@ chmod 600 /opt/databasus/.env
 msg_ok "Configured Databasus"
 
 msg_info "Configuring Valkey"
-cat >/etc/valkey/valkey.conf <<EOF
+cat <<EOF >/etc/valkey/valkey.conf
 port 6379
 bind 127.0.0.1
 protected-mode yes
