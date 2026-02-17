@@ -2809,7 +2809,7 @@ diagnostics_check() {
   result=$(whiptail --backtitle "Proxmox VE Helper Scripts" \
     --title "TELEMETRY & DIAGNOSTICS" \
     --ok-button "Confirm" --cancel-button "Exit" \
-    --radiolist "\nHelp improve Community-Scripts by sharing anonymous data.\nNo IP addresses, hostnames, or personal data is ever collected.\n\nhttps://github.com/community-scripts/telemetry-service#privacy--compliance\n\nUse SPACE to select, ENTER to confirm." 16 72 2 \
+    --radiolist "\nHelp improve Community-Scripts by sharing anonymous data.\n\nWhat we collect:\n  - Container resources (CPU, RAM, disk), OS & PVE version\n  - Application name, install method and status\n\nWhat we DON'T collect:\n  - No IP addresses, hostnames, or personal data\n\nYou can change this anytime in the Settings menu.\nPrivacy: https://github.com/community-scripts/telemetry-service/blob/main/docs/PRIVACY.md\n\nUse SPACE to select, ENTER to confirm." 22 76 2 \
     "yes" "Yes, share anonymous data" OFF \
     "no" "No, opt out" OFF \
     3>&1 1>&2 2>&3) || result="no"
@@ -2833,7 +2833,7 @@ DIAGNOSTICS=${DIAGNOSTICS}
 #   nsapp, method, pve_version, status, exit_code
 #
 # No personal data (IPs, hostnames, passwords) is ever collected.
-# Privacy: https://github.com/community-scripts/telemetry-service#privacy--compliance
+# Privacy: https://github.com/community-scripts/telemetry-service/blob/main/docs/PRIVACY.md
 EOF
 }
 
