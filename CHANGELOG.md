@@ -406,6 +406,32 @@ Exercise vigilance regarding copycat or coat-tailing sites that seek to exploit 
 
 ## 2026-02-17
 
+### 🆕 New Scripts
+
+  - Databasus ([#12018](https://github.com/community-scripts/ProxmoxVE/pull/12018))
+
+### 🚀 Updated Scripts
+
+  - #### 🐞 Bug Fixes
+
+    - fix: pterodactyl-panel add symlink [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11997](https://github.com/community-scripts/ProxmoxVE/pull/11997))
+
+### 💾 Core
+
+  - #### 🐞 Bug Fixes
+
+    - core: call get_lxc_ip in start() before updates [@MickLesk](https://github.com/MickLesk) ([#12015](https://github.com/community-scripts/ProxmoxVE/pull/12015))
+
+  - #### ✨ New Features
+
+    - core: smart recovery for failed installs | extend exit_codes  [@MickLesk](https://github.com/MickLesk) ([#11221](https://github.com/community-scripts/ProxmoxVE/pull/11221))
+
+### 🧰 Tools
+
+  - #### 🔧 Refactor
+
+    - Immich Public Proxy: centralize and fix systemd service creation [@MickLesk](https://github.com/MickLesk) ([#12025](https://github.com/community-scripts/ProxmoxVE/pull/12025))
+
 ## 2026-02-16
 
 ### 🆕 New Scripts
