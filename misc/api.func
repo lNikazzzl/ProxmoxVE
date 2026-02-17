@@ -1006,7 +1006,7 @@ _telemetry_report_exit() {
   # Lazy name resolution: use explicit name, fall back to $APP, then "unknown"
   local name="${TELEMETRY_TOOL_NAME:-${APP:-unknown}}"
 
-  if [[ "${TELEMETRY_TOOL_TYPE:-tool}" == "addon" ]]; then
+  if [[ "${TELEMETRY_TOOL_TYPE:-pve}" == "addon" ]]; then
     post_addon_to_api "$name" "$status" "$ec"
   else
     post_tool_to_api "$name" "$status" "$ec"
@@ -1094,7 +1094,7 @@ post_tool_to_api() {
 {
     "random_id": "${uuid}",
     "execution_id": "${EXECUTION_ID:-${uuid}}",
-    "type": "tool",
+    "type": "pve",
     "nsapp": "${tool_name}",
     "status": "${status}",
     "exit_code": ${exit_code},
