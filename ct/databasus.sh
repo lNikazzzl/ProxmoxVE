@@ -38,19 +38,17 @@ function update_script() {
     cp /opt/databasus/.env /tmp/databasus.env.bak
     msg_ok "Backed up Configuration"
 
-    msg_info "Updating Databasus"
-    fetch_and_deploy_gh_release "databasus" "databasus/databasus" "tarball" "latest" "/opt/databasus"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "databasus" "databasus/databasus" "tarball" "latest" "/opt/databasus"
 
+    msg_info "Updating Databasus"
     cd /opt/databasus/frontend
     $STD npm ci
     $STD npm run build
-
     cd /opt/databasus/backend
     $STD go mod download
     $STD /root/go/bin/swag init -g cmd/main.go -o swagger
     $STD env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o databasus ./cmd/main.go
     mv /opt/databasus/backend/databasus /opt/databasus/databasus
-
     cp -r /opt/databasus/frontend/dist/* /opt/databasus/ui/build/
     cp -r /opt/databasus/backend/migrations /opt/databasus/
     chown -R postgres:postgres /opt/databasus
