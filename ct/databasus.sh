@@ -35,7 +35,7 @@ function update_script() {
     msg_ok "Stopped Databasus"
 
     msg_info "Backing up Configuration"
-    cp /opt/databasus/.env /tmp/databasus.env.bak
+    cp /opt/databasus/.env /opt/databasus.env.bak
     msg_ok "Backed up Configuration"
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "databasus" "databasus/databasus" "tarball" "latest" "/opt/databasus"
@@ -55,8 +55,8 @@ function update_script() {
     msg_ok "Updated Databasus"
 
     msg_info "Restoring Configuration"
-    cp /tmp/databasus.env.bak /opt/databasus/.env
-    rm -f /tmp/databasus.env.bak
+    cp /opt/databasus.env.bak /opt/databasus/.env
+    rm -f /opt/databasus.env.bak
     chown postgres:postgres /opt/databasus/.env
     msg_ok "Restored Configuration"
 
