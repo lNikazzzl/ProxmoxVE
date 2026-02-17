@@ -297,7 +297,7 @@ validate_container_id() {
   # Falls back gracefully if pvesh unavailable or returns empty
   if command -v pvesh &>/dev/null; then
     local cluster_ids
-    cluster_ids=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null | 
+    cluster_ids=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null |
       grep -oP '"vmid":\s*\K[0-9]+' 2>/dev/null || true)
     if [[ -n "$cluster_ids" ]] && echo "$cluster_ids" | grep -qw "$ctid"; then
       return 1
@@ -5273,6 +5273,6 @@ api_exit_script() {
 if command -v pveversion >/dev/null 2>&1; then
   trap 'api_exit_script' EXIT
 fi
-trap 'ensure_log_on_host; post_update_to_api "failed" "$?"' ERR
+trap 'local _ec=$?; if [[ $_ec -ne 0 ]]; then ensure_log_on_host; post_update_to_api "failed" "$_ec"; fi' ERR
 trap 'ensure_log_on_host; post_update_to_api "failed" "130"; exit 130' SIGINT
 trap 'ensure_log_on_host; post_update_to_api "failed" "143"; exit 143' SIGTERM
