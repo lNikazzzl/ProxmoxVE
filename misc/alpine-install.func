@@ -11,11 +11,11 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 load_functions
 catch_errors
 
-# Persist diagnostics opt-in inside container (exported from build.func)
-# so addon scripts running later can find it
-if [[ "${DIAGNOSTICS:-no}" == "yes" ]] && [[ ! -f /usr/local/community-scripts/diagnostics ]]; then
+# Persist diagnostics setting inside container (exported from build.func)
+# so addon scripts running later can find the user's choice
+if [[ ! -f /usr/local/community-scripts/diagnostics ]]; then
   mkdir -p /usr/local/community-scripts
-  echo "DIAGNOSTICS=yes" >/usr/local/community-scripts/diagnostics
+  echo "DIAGNOSTICS=${DIAGNOSTICS:-no}" >/usr/local/community-scripts/diagnostics
 fi
 
 # Get LXC IP address (must be called INSIDE container, after network is up)
