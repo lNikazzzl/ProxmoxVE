@@ -5265,8 +5265,8 @@ api_exit_script() {
     post_update_to_api "failed" "$exit_code"
   elif [[ "${POST_TO_API_DONE:-}" == "true" && "${POST_UPDATE_DONE:-}" != "true" ]]; then
     # Script exited with 0 but never sent a completion status
-    # This catches edge cases like early returns after post_to_api()
-    post_update_to_api "failed" "1"
+    # exit_code=0 is never an error — report as success
+    post_update_to_api "done" "0"
   fi
 }
 
