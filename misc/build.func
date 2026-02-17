@@ -45,6 +45,7 @@ variables() {
   DIAGNOSTICS="yes"                                      # sets the DIAGNOSTICS variable to "yes", used for the API call.
   METHOD="default"                                       # sets the METHOD variable to "default", used for the API call.
   RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)"      # generates a random UUID and sets it to the RANDOM_UUID variable.
+  EXECUTION_ID="${RANDOM_UUID}"                          # Unique execution ID for telemetry record identification (unique-indexed in PocketBase)
   SESSION_ID="${RANDOM_UUID:0:8}"                        # Short session ID (first 8 chars of UUID) for log files
   BUILD_LOG="/tmp/create-lxc-${SESSION_ID}.log"          # Host-side container creation log
   combined_log="/tmp/install-${SESSION_ID}-combined.log" # Combined log (build + install) for failed installations
@@ -3561,6 +3562,7 @@ build_container() {
   # Core exports for install.func
   export DIAGNOSTICS="$DIAGNOSTICS"
   export RANDOM_UUID="$RANDOM_UUID"
+  export EXECUTION_ID="$EXECUTION_ID"
   export SESSION_ID="$SESSION_ID"
   export CACHER="$APT_CACHER"
   export CACHER_IP="$APT_CACHER_IP"

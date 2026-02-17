@@ -552,6 +552,7 @@ post_to_api() {
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "lxc",
     "nsapp": "${NSAPP:-unknown}",
     "status": "installing",
@@ -656,6 +657,7 @@ post_to_api_vm() {
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "vm",
     "nsapp": "${NSAPP:-unknown}",
     "status": "installing",
@@ -788,6 +790,7 @@ post_update_to_api() {
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "${TELEMETRY_TYPE:-lxc}",
     "nsapp": "${NSAPP:-unknown}",
     "status": "${pb_status}",
@@ -830,6 +833,7 @@ EOF
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "${TELEMETRY_TYPE:-lxc}",
     "nsapp": "${NSAPP:-unknown}",
     "status": "${pb_status}",
@@ -872,6 +876,7 @@ EOF
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "${TELEMETRY_TYPE:-lxc}",
     "nsapp": "${NSAPP:-unknown}",
     "status": "${pb_status}",
@@ -1088,6 +1093,7 @@ post_tool_to_api() {
     cat <<EOF
 {
     "random_id": "${uuid}",
+    "execution_id": "${EXECUTION_ID:-${uuid}}",
     "type": "tool",
     "nsapp": "${tool_name}",
     "status": "${status}",
@@ -1155,6 +1161,7 @@ post_addon_to_api() {
     cat <<EOF
 {
     "random_id": "${uuid}",
+    "execution_id": "${EXECUTION_ID:-${uuid}}",
     "type": "addon",
     "nsapp": "${addon_name}",
     "status": "${status}",
@@ -1246,6 +1253,7 @@ post_update_to_api_extended() {
     cat <<EOF
 {
     "random_id": "${RANDOM_UUID}",
+    "execution_id": "${EXECUTION_ID:-${RANDOM_UUID}}",
     "type": "${TELEMETRY_TYPE:-lxc}",
     "nsapp": "${NSAPP:-unknown}",
     "status": "${pb_status}",
