@@ -2805,24 +2805,11 @@ diagnostics_check() {
     return
   fi
 
-  local dialog_text
-  dialog_text="Help improve Community-Scripts by sharing anonymous installation data.\n\n"
-  dialog_text+="What we collect:\n"
-  dialog_text+="  - Container type, disk size, CPU cores, RAM size\n"
-  dialog_text+="  - OS type/version, Proxmox VE version\n"
-  dialog_text+="  - Application name, install method and status\n\n"
-  dialog_text+="What we DON'T collect:\n"
-  dialog_text+="  - No IP addresses, hostnames, or personal data\n"
-  dialog_text+="  - No passwords, tokens, or configuration values\n\n"
-  dialog_text+="More info: https://telemetry.community-scripts.org\n"
-  dialog_text+="Privacy:   https://github.com/community-scripts/telemetry-service#privacy--compliance\n\n"
-  dialog_text+="Use SPACE to select, ENTER to confirm."
-
   local result
   result=$(whiptail --backtitle "Proxmox VE Helper Scripts" \
     --title "TELEMETRY & DIAGNOSTICS" \
     --ok-button "Confirm" --cancel-button "Exit" \
-    --radiolist "$dialog_text" 24 72 2 \
+    --radiolist "\nHelp improve Community-Scripts by sharing anonymous data.\nNo IP addresses, hostnames, or personal data is ever collected.\n\nhttps://github.com/community-scripts/telemetry-service#privacy--compliance\n\nUse SPACE to select, ENTER to confirm." 16 72 2 \
     "yes" "Yes, share anonymous data" OFF \
     "no" "No, opt out" OFF \
     3>&1 1>&2 2>&3) || result="no"
