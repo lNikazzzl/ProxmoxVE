@@ -2805,29 +2805,29 @@ diagnostics_check() {
     return
   fi
 
-  local dialog_text=(
-    "Help improve Community-Scripts by sharing anonymous installation data.\n\n"
-    "What we collect:\n"
-    "  - Container type, disk size, CPU cores, RAM size\n"
-    "  - OS type/version, Proxmox VE version\n"
-    "  - Application name, install method and status\n\n"
-    "What we DON'T collect:\n"
-    "  - No IP addresses, hostnames, or personal data\n"
-    "  - No passwords, tokens, or configuration values\n\n"
-    "You can change this at any time in the Settings menu\n"
-    "or by editing: ${config_file}\n\n"
-    "More info: https://telemetry.community-scripts.org\n"
-    "Privacy:   https://github.com/community-scripts/telemetry-service#privacy--compliance"
-  )
+  local dialog_text
+  dialog_text="Help improve Community-Scripts by sharing anonymous installation data.\n\n"
+  dialog_text+="What we collect:\n"
+  dialog_text+="  - Container type, disk size, CPU cores, RAM size\n"
+  dialog_text+="  - OS type/version, Proxmox VE version\n"
+  dialog_text+="  - Application name, install method and status\n\n"
+  dialog_text+="What we DON'T collect:\n"
+  dialog_text+="  - No IP addresses, hostnames, or personal data\n"
+  dialog_text+="  - No passwords, tokens, or configuration values\n\n"
+  dialog_text+="More info: https://telemetry.community-scripts.org\n"
+  dialog_text+="Privacy:   https://github.com/community-scripts/telemetry-service#privacy--compliance\n\n"
+  dialog_text+="Use SPACE to select, ENTER to confirm."
 
-  if whiptail --backtitle "Proxmox VE Helper Scripts" \
+  local result
+  result=$(whiptail --backtitle "Proxmox VE Helper Scripts" \
     --title "TELEMETRY & DIAGNOSTICS" \
-    --yesno "${dialog_text[*]}" 22 68 \
-    --yes-button "Yes, share data" --no-button "No, opt out" --defaultno; then
-    DIAGNOSTICS="yes"
-  else
-    DIAGNOSTICS="no"
-  fi
+    --ok-button "Confirm" --cancel-button "Exit" \
+    --radiolist "$dialog_text" 24 72 2 \
+    "yes" "Yes, share anonymous data" OFF \
+    "no" "No, opt out" OFF \
+    3>&1 1>&2 2>&3) || result="no"
+
+  DIAGNOSTICS="${result:-no}"
 
   cat <<EOF >"$config_file"
 DIAGNOSTICS=${DIAGNOSTICS}
