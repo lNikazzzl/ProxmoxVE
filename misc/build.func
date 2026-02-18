@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: tteck (tteckster) | MickLesk | michelroegl-brunner
-# License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/branch/main/LICENSE
+# License: MIT | https://github.com/lNikazzzl/ProxmoxVE/raw/branch/main/LICENSE
 
 # ==============================================================================
 # BUILD.FUNC - LXC CONTAINER BUILD & CONFIGURATION
@@ -2814,26 +2814,50 @@ diagnostics_check() {
     "no" "No, opt out" OFF \
     3>&1 1>&2 2>&3) || result="no"
 
-  DIAGNOSTICS="${result:-no}"
+#This file is used to store the diagnostics settings for the Community-Scripts API.
+#https://github.com/lNikazzzl/ProxmoxVE/discussions/1836
+#Your diagnostics will be sent to the Community-Scripts API for troubleshooting/statistical purposes.
+#You can review the data at https://community-scripts.github.io/ProxmoxVE/data
+#If you do not wish to send diagnostics, please set the variable 'DIAGNOSTICS' to "no" in /usr/local/community-scripts/diagnostics, or use the menue.
+#This will disable the diagnostics feature.
+#To send diagnostics, set the variable 'DIAGNOSTICS' to "yes" in /usr/local/community-scripts/diagnostics, or use the menue.
+#This will enable the diagnostics feature.
+#The following information will be sent:
+#"disk_size"
+#"core_count"
+#"ram_size"
+#"os_type"
+#"os_version"
+#"nsapp"
+#"method"
+#"pve_version"
+#"status"
+#If you have any concerns, please review the source code at /misc/build.func
+EOF
+      DIAGNOSTICS="yes"
+    else
+      cat <<EOF >/usr/local/community-scripts/diagnostics
+DIAGNOSTICS=no
 
-  cat <<EOF >"$config_file"
-DIAGNOSTICS=${DIAGNOSTICS}
-
-# Community-Scripts Telemetry Configuration
-# https://telemetry.community-scripts.org
-#
-# This file stores your telemetry preference.
-# Set DIAGNOSTICS=yes to share anonymous installation data.
-# Set DIAGNOSTICS=no to disable telemetry.
-#
-# You can also change this via the Settings menu during installation.
-#
-# Data collected (when enabled):
-#   disk_size, core_count, ram_size, os_type, os_version,
-#   nsapp, method, pve_version, status, exit_code
-#
-# No personal data (IPs, hostnames, passwords) is ever collected.
-# Privacy: https://github.com/community-scripts/telemetry-service/blob/main/docs/PRIVACY.md
+#This file is used to store the diagnostics settings for the Community-Scripts API.
+#https://github.com/lNikazzzl/ProxmoxVE/discussions/1836
+#Your diagnostics will be sent to the Community-Scripts API for troubleshooting/statistical purposes.
+#You can review the data at https://community-scripts.github.io/ProxmoxVE/data
+#If you do not wish to send diagnostics, please set the variable 'DIAGNOSTICS' to "no" in /usr/local/community-scripts/diagnostics, or use the menue.
+#This will disable the diagnostics feature.
+#To send diagnostics, set the variable 'DIAGNOSTICS' to "yes" in /usr/local/community-scripts/diagnostics, or use the menue.
+#This will enable the diagnostics feature.
+#The following information will be sent:
+#"disk_size"
+#"core_count"
+#"ram_size"
+#"os_type"
+#"os_version"
+#"nsapp"
+#"method"
+#"pve_version"
+#"status"
+#If you have any concerns, please review the source code at /misc/build.func
 EOF
 }
 
@@ -5460,15 +5484,15 @@ description() {
 
   <span style='margin: 0 10px;'>
     <i class="fa fa-github fa-fw" style="color: #f5f5f5;"></i>
-    <a href='https://github.com/community-scripts/ProxmoxVE' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>GitHub</a>
+    <a href='https://github.com/lNikazzzl/ProxmoxVE' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>GitHub</a>
   </span>
   <span style='margin: 0 10px;'>
     <i class="fa fa-comments fa-fw" style="color: #f5f5f5;"></i>
-    <a href='https://github.com/community-scripts/ProxmoxVE/discussions' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>Discussions</a>
+    <a href='https://github.com/lNikazzzl/ProxmoxVE/discussions' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>Discussions</a>
   </span>
   <span style='margin: 0 10px;'>
     <i class="fa fa-exclamation-circle fa-fw" style="color: #f5f5f5;"></i>
-    <a href='https://github.com/community-scripts/ProxmoxVE/issues' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>Issues</a>
+    <a href='https://github.com/lNikazzzl/ProxmoxVE/issues' target='_blank' rel='noopener noreferrer' style='text-decoration: none; color: #00617f;'>Issues</a>
   </span>
 </div>
 EOF
