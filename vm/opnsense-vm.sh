@@ -4,7 +4,7 @@
 # Author: michelroegl-brunner
 # License: MIT | https://github.com/lNikazzzl/ProxmoxVE/raw/main/LICENSE
 
-source /dev/stdin <<<$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/api.func)
+source /dev/stdin <<<$(curl -fsSL https://raw.githubusercontent.com/lNikazzzl/ProxmoxVE/main/misc/api.func)
 
 function header_info {
   clear

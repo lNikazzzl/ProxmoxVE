@@ -1,6 +1,6 @@
 <div align="center">
   <a href="#">
-    <img src="https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/images/logo.png" height="100px" />
+    <img src="https://raw.githubusercontent.com/lNikazzzl/ProxmoxVE/main/misc/images/logo.png" height="100px" />
  </a>
 </div>
 <h1 align="center">Changelog</h1>
@@ -410,115 +410,115 @@ Exercise vigilance regarding copycat or coat-tailing sites that seek to exploit 
 
   - #### 💥 Breaking Changes
 
-    - [Fix] PatchMon: use `SERVER_PORT` in Nginx config if set in env [@vhsdream](https://github.com/vhsdream) ([#12053](https://github.com/community-scripts/ProxmoxVE/pull/12053))
+    - [Fix] PatchMon: use `SERVER_PORT` in Nginx config if set in env [@vhsdream](https://github.com/vhsdream) ([#12053](https://github.com/lNikazzzl/ProxmoxVE/pull/12053))
 
 ### 💾 Core
 
   - #### ✨ New Features
 
-    - core: Execution ID & Telemetry Improvements [@MickLesk](https://github.com/MickLesk) ([#12041](https://github.com/community-scripts/ProxmoxVE/pull/12041))
+    - core: Execution ID & Telemetry Improvements [@MickLesk](https://github.com/MickLesk) ([#12041](https://github.com/lNikazzzl/ProxmoxVE/pull/12041))
 
 ## 2026-02-17
 
 ### 🆕 New Scripts
 
-  - Databasus ([#12018](https://github.com/community-scripts/ProxmoxVE/pull/12018))
+  - Databasus ([#12018](https://github.com/lNikazzzl/ProxmoxVE/pull/12018))
 
 ### 🚀 Updated Scripts
 
   - #### 🐞 Bug Fixes
 
-    - [Hotfix] Cleanuparr: backup config before update [@vhsdream](https://github.com/vhsdream) ([#12039](https://github.com/community-scripts/ProxmoxVE/pull/12039))
-    - fix: pterodactyl-panel add symlink [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11997](https://github.com/community-scripts/ProxmoxVE/pull/11997))
+    - [Hotfix] Cleanuparr: backup config before update [@vhsdream](https://github.com/vhsdream) ([#12039](https://github.com/lNikazzzl/ProxmoxVE/pull/12039))
+    - fix: pterodactyl-panel add symlink [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11997](https://github.com/lNikazzzl/ProxmoxVE/pull/11997))
 
 ### 💾 Core
 
   - #### 🐞 Bug Fixes
 
-    - core: call get_lxc_ip in start() before updates [@MickLesk](https://github.com/MickLesk) ([#12015](https://github.com/community-scripts/ProxmoxVE/pull/12015))
+    - core: call get_lxc_ip in start() before updates [@MickLesk](https://github.com/MickLesk) ([#12015](https://github.com/lNikazzzl/ProxmoxVE/pull/12015))
 
   - #### ✨ New Features
 
-    - tools/pve: add data analytics / formatting / linting [@MickLesk](https://github.com/MickLesk) ([#12034](https://github.com/community-scripts/ProxmoxVE/pull/12034))
-    - core: smart recovery for failed installs | extend exit_codes  [@MickLesk](https://github.com/MickLesk) ([#11221](https://github.com/community-scripts/ProxmoxVE/pull/11221))
+    - tools/pve: add data analytics / formatting / linting [@MickLesk](https://github.com/MickLesk) ([#12034](https://github.com/lNikazzzl/ProxmoxVE/pull/12034))
+    - core: smart recovery for failed installs | extend exit_codes  [@MickLesk](https://github.com/MickLesk) ([#11221](https://github.com/lNikazzzl/ProxmoxVE/pull/11221))
 
   - #### 🔧 Refactor
 
-    - core: error-handler improvements | better exit_code handling | better tools.func source check [@MickLesk](https://github.com/MickLesk) ([#12019](https://github.com/community-scripts/ProxmoxVE/pull/12019))
+    - core: error-handler improvements | better exit_code handling | better tools.func source check [@MickLesk](https://github.com/MickLesk) ([#12019](https://github.com/lNikazzzl/ProxmoxVE/pull/12019))
 
 ### 🧰 Tools
 
   - #### 🔧 Refactor
 
-    - Immich Public Proxy: centralize and fix systemd service creation [@MickLesk](https://github.com/MickLesk) ([#12025](https://github.com/community-scripts/ProxmoxVE/pull/12025))
+    - Immich Public Proxy: centralize and fix systemd service creation [@MickLesk](https://github.com/MickLesk) ([#12025](https://github.com/lNikazzzl/ProxmoxVE/pull/12025))
 
 ### 📚 Documentation
 
-  - fix contribution/setup-fork [@andreasabeck](https://github.com/andreasabeck) ([#12047](https://github.com/community-scripts/ProxmoxVE/pull/12047))
+  - fix contribution/setup-fork [@andreasabeck](https://github.com/andreasabeck) ([#12047](https://github.com/lNikazzzl/ProxmoxVE/pull/12047))
 
 ## 2026-02-16
 
 ### 🆕 New Scripts
 
-  - RomM ([#11987](https://github.com/community-scripts/ProxmoxVE/pull/11987))
-- LinkDing ([#11976](https://github.com/community-scripts/ProxmoxVE/pull/11976))
+  - RomM ([#11987](https://github.com/lNikazzzl/ProxmoxVE/pull/11987))
+- LinkDing ([#11976](https://github.com/lNikazzzl/ProxmoxVE/pull/11976))
 
 ### 🚀 Updated Scripts
 
-  - Opencloud: Pin version to 5.1.0 [@vhsdream](https://github.com/vhsdream) ([#12004](https://github.com/community-scripts/ProxmoxVE/pull/12004))
+  - Opencloud: Pin version to 5.1.0 [@vhsdream](https://github.com/vhsdream) ([#12004](https://github.com/lNikazzzl/ProxmoxVE/pull/12004))
 
   - #### 🐞 Bug Fixes
 
-    - Tududi: Fix sed command for DB_FILE configuration [@tremor021](https://github.com/tremor021) ([#11988](https://github.com/community-scripts/ProxmoxVE/pull/11988))
-    - slskd: fix exit position [@MickLesk](https://github.com/MickLesk) ([#11963](https://github.com/community-scripts/ProxmoxVE/pull/11963))
-    - cryptpad: restore config earlier and run onlyoffice upgrade [@MickLesk](https://github.com/MickLesk) ([#11964](https://github.com/community-scripts/ProxmoxVE/pull/11964))
-    - jellyseerr/overseerr: Migrate update script to Seerr; prompt rerun [@MickLesk](https://github.com/MickLesk) ([#11965](https://github.com/community-scripts/ProxmoxVE/pull/11965))
+    - Tududi: Fix sed command for DB_FILE configuration [@tremor021](https://github.com/tremor021) ([#11988](https://github.com/lNikazzzl/ProxmoxVE/pull/11988))
+    - slskd: fix exit position [@MickLesk](https://github.com/MickLesk) ([#11963](https://github.com/lNikazzzl/ProxmoxVE/pull/11963))
+    - cryptpad: restore config earlier and run onlyoffice upgrade [@MickLesk](https://github.com/MickLesk) ([#11964](https://github.com/lNikazzzl/ProxmoxVE/pull/11964))
+    - jellyseerr/overseerr: Migrate update script to Seerr; prompt rerun [@MickLesk](https://github.com/MickLesk) ([#11965](https://github.com/lNikazzzl/ProxmoxVE/pull/11965))
 
   - #### 🔧 Refactor
 
-    - core/vm's: ensure script state is sent on script exit  [@MickLesk](https://github.com/MickLesk) ([#11991](https://github.com/community-scripts/ProxmoxVE/pull/11991))
-    - Vaultwarden: export VW_VERSION as version number [@MickLesk](https://github.com/MickLesk) ([#11966](https://github.com/community-scripts/ProxmoxVE/pull/11966))
-    - Zabbix: Improve zabbix-agent service detection [@MickLesk](https://github.com/MickLesk) ([#11968](https://github.com/community-scripts/ProxmoxVE/pull/11968))
+    - core/vm's: ensure script state is sent on script exit  [@MickLesk](https://github.com/MickLesk) ([#11991](https://github.com/lNikazzzl/ProxmoxVE/pull/11991))
+    - Vaultwarden: export VW_VERSION as version number [@MickLesk](https://github.com/MickLesk) ([#11966](https://github.com/lNikazzzl/ProxmoxVE/pull/11966))
+    - Zabbix: Improve zabbix-agent service detection [@MickLesk](https://github.com/MickLesk) ([#11968](https://github.com/lNikazzzl/ProxmoxVE/pull/11968))
 
 ### 💾 Core
 
   - #### ✨ New Features
 
-    - tools.func: ensure /usr/local/bin PATH persists for pct enter sessions [@MickLesk](https://github.com/MickLesk) ([#11970](https://github.com/community-scripts/ProxmoxVE/pull/11970))
+    - tools.func: ensure /usr/local/bin PATH persists for pct enter sessions [@MickLesk](https://github.com/MickLesk) ([#11970](https://github.com/lNikazzzl/ProxmoxVE/pull/11970))
 
   - #### 🔧 Refactor
 
-    - core: remove duplicate error handler from alpine-install.func [@MickLesk](https://github.com/MickLesk) ([#11971](https://github.com/community-scripts/ProxmoxVE/pull/11971))
+    - core: remove duplicate error handler from alpine-install.func [@MickLesk](https://github.com/MickLesk) ([#11971](https://github.com/lNikazzzl/ProxmoxVE/pull/11971))
 
 ### 📂 Github
 
-  - github: add "website" label if "json" changed [@MickLesk](https://github.com/MickLesk) ([#11975](https://github.com/community-scripts/ProxmoxVE/pull/11975))
+  - github: add "website" label if "json" changed [@MickLesk](https://github.com/MickLesk) ([#11975](https://github.com/lNikazzzl/ProxmoxVE/pull/11975))
 
 ### 🌐 Website
 
   - #### 📝 Script Information
 
-    - Update Wishlist LXC webpage to include reverse proxy info [@summoningpixels](https://github.com/summoningpixels) ([#11973](https://github.com/community-scripts/ProxmoxVE/pull/11973))
-    - Update OpenCloud LXC webpage to include services ports [@summoningpixels](https://github.com/summoningpixels) ([#11969](https://github.com/community-scripts/ProxmoxVE/pull/11969))
+    - Update Wishlist LXC webpage to include reverse proxy info [@summoningpixels](https://github.com/summoningpixels) ([#11973](https://github.com/lNikazzzl/ProxmoxVE/pull/11973))
+    - Update OpenCloud LXC webpage to include services ports [@summoningpixels](https://github.com/summoningpixels) ([#11969](https://github.com/lNikazzzl/ProxmoxVE/pull/11969))
 
 ## 2026-02-15
 
 ### 🆕 New Scripts
 
-  - ebusd ([#11942](https://github.com/community-scripts/ProxmoxVE/pull/11942))
-- add: seer script and migrations [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11930](https://github.com/community-scripts/ProxmoxVE/pull/11930))
+  - ebusd ([#11942](https://github.com/lNikazzzl/ProxmoxVE/pull/11942))
+- add: seer script and migrations [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11930](https://github.com/lNikazzzl/ProxmoxVE/pull/11930))
 
 ### 🚀 Updated Scripts
 
   - #### 🐞 Bug Fixes
 
-    - Fix seerr URL in jellyseerr script [@lucacome](https://github.com/lucacome) ([#11951](https://github.com/community-scripts/ProxmoxVE/pull/11951))
-    - Fix jellyseer and overseer script replacement [@lucacome](https://github.com/lucacome) ([#11949](https://github.com/community-scripts/ProxmoxVE/pull/11949))
-    - Tautulli: Add setuptools < 81 [@tremor021](https://github.com/tremor021) ([#11943](https://github.com/community-scripts/ProxmoxVE/pull/11943))
+    - Fix seerr URL in jellyseerr script [@lucacome](https://github.com/lucacome) ([#11951](https://github.com/lNikazzzl/ProxmoxVE/pull/11951))
+    - Fix jellyseer and overseer script replacement [@lucacome](https://github.com/lucacome) ([#11949](https://github.com/lNikazzzl/ProxmoxVE/pull/11949))
+    - Tautulli: Add setuptools < 81 [@tremor021](https://github.com/tremor021) ([#11943](https://github.com/lNikazzzl/ProxmoxVE/pull/11943))
 
   - #### 💥 Breaking Changes
 
-    - Refactor: Patchmon [@vhsdream](https://github.com/vhsdream) ([#11888](https://github.com/community-scripts/ProxmoxVE/pull/11888))
+    - Refactor: Patchmon [@vhsdream](https://github.com/vhsdream) ([#11888](https://github.com/lNikazzzl/ProxmoxVE/pull/11888))
 
 ## 2026-02-14
 
@@ -526,30 +526,30 @@ Exercise vigilance regarding copycat or coat-tailing sites that seek to exploit 
 
   - #### 🐞 Bug Fixes
 
-    - Increase disk allocation for OpenWebUI and Ollama to prevent installation failures [@Copilot](https://github.com/Copilot) ([#11920](https://github.com/community-scripts/ProxmoxVE/pull/11920))
+    - Increase disk allocation for OpenWebUI and Ollama to prevent installation failures [@Copilot](https://github.com/Copilot) ([#11920](https://github.com/lNikazzzl/ProxmoxVE/pull/11920))
 
 ### 💾 Core
 
   - #### 🐞 Bug Fixes
 
-    - core: handle missing RAM speed in nested VMs [@MickLesk](https://github.com/MickLesk) ([#11913](https://github.com/community-scripts/ProxmoxVE/pull/11913))
+    - core: handle missing RAM speed in nested VMs [@MickLesk](https://github.com/MickLesk) ([#11913](https://github.com/lNikazzzl/ProxmoxVE/pull/11913))
 
   - #### ✨ New Features
 
-    - core: overwriteable app version [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11753](https://github.com/community-scripts/ProxmoxVE/pull/11753))
-    - core: validate container IDs cluster-wide across all nodes [@MickLesk](https://github.com/MickLesk) ([#11906](https://github.com/community-scripts/ProxmoxVE/pull/11906))
-    - core: improve error reporting with structured error strings and better categorization + output formatting [@MickLesk](https://github.com/MickLesk) ([#11907](https://github.com/community-scripts/ProxmoxVE/pull/11907))
-    - core: unified logging system with combined logs [@MickLesk](https://github.com/MickLesk) ([#11761](https://github.com/community-scripts/ProxmoxVE/pull/11761))
+    - core: overwriteable app version [@CrazyWolf13](https://github.com/CrazyWolf13) ([#11753](https://github.com/lNikazzzl/ProxmoxVE/pull/11753))
+    - core: validate container IDs cluster-wide across all nodes [@MickLesk](https://github.com/MickLesk) ([#11906](https://github.com/lNikazzzl/ProxmoxVE/pull/11906))
+    - core: improve error reporting with structured error strings and better categorization + output formatting [@MickLesk](https://github.com/MickLesk) ([#11907](https://github.com/lNikazzzl/ProxmoxVE/pull/11907))
+    - core: unified logging system with combined logs [@MickLesk](https://github.com/MickLesk) ([#11761](https://github.com/lNikazzzl/ProxmoxVE/pull/11761))
 
 ### 🧰 Tools
 
-  - lxc-updater: add patchmon aware [@failure101](https://github.com/failure101) ([#11905](https://github.com/community-scripts/ProxmoxVE/pull/11905))
+  - lxc-updater: add patchmon aware [@failure101](https://github.com/failure101) ([#11905](https://github.com/lNikazzzl/ProxmoxVE/pull/11905))
 
 ### 🌐 Website
 
   - #### 📝 Script Information
 
-    - Disable UniFi script - APT packages no longer available [@Copilot](https://github.com/Copilot) ([#11898](https://github.com/community-scripts/ProxmoxVE/pull/11898))
+    - Disable UniFi script - APT packages no longer available [@Copilot](https://github.com/Copilot) ([#11898](https://github.com/lNikazzzl/ProxmoxVE/pull/11898))
 
 ## 2026-02-13
 
@@ -571,7 +571,7 @@ Exercise vigilance regarding copycat or coat-tailing sites that seek to exploit 
 
   - #### 🔧 Refactor
 
-    - core: retry reporting with fallback payloads [@MickLesk](https://github.com/MickLesk) ([#11885](https://github.com/community-scripts/ProxmoxVE/pull/11885))
+    - core: retry reporting with fallback payloads [@MickLesk](https://github.com/MickLesk) ([#11885](https://github.com/lNikazzzl/ProxmoxVE/pull/11885))
 
 ### 📡 API
 
